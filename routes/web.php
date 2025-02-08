@@ -6,7 +6,6 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\OtherController;
 
-
 Route::get('/', function () {
     return view('welcome');
 });
@@ -27,6 +26,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('/booking', [BookingController::class, 'stepOne'])->name('booking.step.one');
+    
+    Route::get('/booking/step-two', [BookingController::class, 'stepOne']);
+    Route::get('/booking/step-three', [BookingController::class, 'stepOne']);
+    Route::get('/booking/complete', [BookingController::class, 'myBookings']);
+
     Route::post('/booking/step-two', [BookingController::class, 'stepTwo'])->name('booking.step.two');
     Route::post('/booking/step-three', [BookingController::class, 'stepThree'])->name('booking.step.three');
 
