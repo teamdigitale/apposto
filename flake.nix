@@ -26,6 +26,13 @@
               version = "1.0.0";
               src = ./.;
               vendorHash = "sha256-ezHlbARjnQqq3XJyjvjHeZTQzuSJ2wY5ZNxIMTVhAzE=";
+              postInstall = ''
+                cd $out/share/php/apposto
+                php artisan livewire:publish --assets
+                php artisan storage:link
+              '';
+
+              nativeBuildInputs = [ pkgs.php ];
             });
 
             containerImage = let appRoot = "/share/php/apposto"; in
@@ -70,6 +77,11 @@
                   languages.php.enable = true;
                   packages = [
                     pkgs.actionlint
+                    pkgs.azure-cli
+                    pkgs.helm-docs
+                    pkgs.kubectl
+                    pkgs.kubelogin
+                    pkgs.kubernetes-helm
                   ];
                   processes.serve.exec = "./artisan serve";
                 })

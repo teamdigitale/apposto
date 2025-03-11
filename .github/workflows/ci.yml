@@ -60,3 +60,25 @@ jobs:
         run: podman push ${{ steps.tag.outputs.IMAGE_ID }}
     env:
       IMAGE_NAME: apposto
+  helmChart:
+    name: Build Helm chart
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: charts/apposto
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72 # v30
+      - uses: nicknovitski/nix-develop@9be7cfb4b10451d3390a75dc18ad0465bed4932a # v1
+        with:
+          arguments: --impure
+      - name: Package
+        run: |
+          helm dependency build
+          helm package .
+      - name: Log in
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Push
+        run: helm push -- *.tgz oci://ghcr.io/${{ github.repository }}/charts

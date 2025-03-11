@@ -1,0 +1,181 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "apposto.fullname" . }}
+  labels:
+    {{- include "apposto.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "apposto.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "apposto.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "apposto.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: create-dirs
+          image: busybox:1.37
+          command:
+            - mkdir
+          args:
+            - -p
+            - app/public
+            - logs
+            - framework/cache
+            - framework/sessions
+            - framework/views
+          volumeMounts:
+            - name: storage
+              mountPath: /mnt
+          workingDir: /mnt
+        - name: set-permissions
+          image: busybox:1.37
+          command:
+            - chown
+          args:
+            - -R
+            - 1000:1000
+            - bootstrap-cache
+            - storage
+            - tmp
+          volumeMounts:
+            - name: bootstrap-cache
+              mountPath: /mnt/bootstrap-cache
+            - name: storage
+              mountPath: /mnt/storage
+            - name: tmp
+              mountPath: /mnt/tmp
+          workingDir: /mnt
+        - name: migrate
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - migrate
+            - --force
+          env:
+            - name: DB_CONNECTION
+              value: pgsql
+            - name: DB_HOST
+              value: {{ .Release.Name }}-postgresql
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_DATABASE
+              value: {{ .Values.postgresql.auth.database }}
+            - name: DB_USERNAME
+              value: {{ .Values.postgresql.auth.username }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-postgresql
+                  key: password
+          volumeMounts:
+            - name: bootstrap-cache
+              mountPath: /share/php/apposto/bootstrap/cache
+            - name: storage
+              mountPath: /share/php/apposto/storage
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - serve
+            - --host
+            - "[::]"
+          env:
+            - name: DB_CONNECTION
+              value: pgsql
+            - name: DB_HOST
+              value: {{ .Release.Name }}-postgresql
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_DATABASE
+              value: {{ .Values.postgresql.auth.database }}
+            - name: DB_USERNAME
+              value: {{ .Values.postgresql.auth.username }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-postgresql
+                  key: password
+          envFrom:
+            - configMapRef:
+                name: {{ .Chart.Name }}
+            - secretRef:
+                name: {{ .Chart.Name }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: bootstrap-cache
+              mountPath: /share/php/apposto/bootstrap/cache
+            - name: storage
+              mountPath: /share/php/apposto/storage
+            - name: tmp
+              mountPath: /tmp
+     {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: bootstrap-cache
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: storage
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: {{ .Values.statefulset.storage.size }}
+        #storageClassName: {{ .Values.statefulset.storage.class }}
