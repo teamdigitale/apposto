@@ -147,7 +147,10 @@ spec:
               mountPath: /share/php/apposto/bootstrap/cache
             - name: storage
               mountPath: /share/php/apposto/storage
-      {{- with .Values.nodeSelector }}
+            - name: storage
+              mountPath: /share/php/apposto/public/storage
+              subPath: app/public
+     {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
