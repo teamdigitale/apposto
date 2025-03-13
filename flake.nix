@@ -21,7 +21,7 @@
         in
         {
           packages = {
-            default = pkgs.php.buildComposerProject (finalAttrs: {
+            default = pkgs.php83.buildComposerProject (finalAttrs: {
               pname = "apposto";
               version = "1.0.0";
               src = ./.;
@@ -32,7 +32,7 @@
                 php artisan storage:link
               '';
 
-              nativeBuildInputs = [ pkgs.php ];
+              nativeBuildInputs = [ pkgs.php83 ];
             });
 
             containerImage = let appRoot = "/share/php/apposto"; in
@@ -41,7 +41,7 @@
 
                 copyToRoot = pkgs.buildEnv {
                   name = "image-root";
-                  paths = [ self.packages.${system}.default pkgs.bashInteractive pkgs.coreutils pkgs.curl ];
+                  paths = [ self.packages.${system}.default pkgs.php83 pkgs.bashInteractive pkgs.coreutils pkgs.curl ];
                 };
 
                 perms = [{
@@ -53,8 +53,12 @@
                 }];
 
                 config = {
-                  Cmd = [ "serve" ];
-                  Entrypoint = [ "${appRoot}/artisan" ];
+                  Cmd = [ "octane:start" "--server=swoole" "--host=0.0.0.0" "--port=8000" ];
+                  Entrypoint = [
+                    "/bin/bash"
+                    "-c"
+                    "${appRoot}/artisan optimize && ${appRoot}/artisan config:cache && ${appRoot}/artisan route:cache && ${appRoot}/artisan view:cache && ${appRoot}/artisan serve --host=0.0.0.0 --port=8000"
+                  ];
                   ExposedPorts = {
                     "8000" = { };
                   };
@@ -74,7 +78,10 @@
               inherit inputs pkgs;
               modules = [
                 ({ config, ... }: {
-                  languages.php.enable = true;
+                  languages.php = {
+                    enable = true;
+                    version = "8.3";
+                  };
                   packages = [
                     pkgs.actionlint
                     pkgs.kubectl
