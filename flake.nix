@@ -55,6 +55,9 @@
                 config = {
                   Cmd = [ "serve" ];
                   Entrypoint = [ "${appRoot}/artisan" ];
+                  Env = [
+                    "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+                  ];
                   ExposedPorts = {
                     "8000" = { };
                   };
