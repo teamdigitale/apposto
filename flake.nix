@@ -25,7 +25,7 @@
               pname = "apposto";
               version = "1.0.0";
               src = ./.;
-              vendorHash = "sha256-77veOv4WrU4YSVMXSnS4d7H42IZPJl4+nX8idvjWFjg=";
+              vendorHash = "sha256-X6DmqNPodkWwKC/n4+zORWxaTkJWMVK1o6+dhZKv+Hg=";
               postInstall = ''
                 cd $out/share/php/apposto
                 php artisan livewire:publish --assets
@@ -55,6 +55,9 @@
                 config = {
                   Cmd = [ "serve" ];
                   Entrypoint = [ "${appRoot}/artisan" ];
+                  Env = [
+                    "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+                  ];
                   ExposedPorts = {
                     "8000" = { };
                   };
