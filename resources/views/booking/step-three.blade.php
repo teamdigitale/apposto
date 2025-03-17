@@ -2,8 +2,8 @@
 
 <h1>Riepilogo Prenotazione</h1><br />
 
-<p><strong>Data Iniziale:</strong> {{ session('booking.start_date') }}</p>
-<p><strong>Data Finale:</strong> {{ session('booking.end_date') }}</p>
+<p><strong>Data Iniziale:</strong> {{ Carbon\Carbon::parse(session('booking.start_date'))->format('d-m-Y')  }}</p>
+<p><strong>Data Finale:</strong> {{ Carbon\Carbon::parse(session('booking.end_date'))->format('d-m-Y') }}</p>
 <p><strong>Orario Iniziale:</strong> {{ session('booking.start_time') }}</p>
 <p><strong>Orario Finale:</strong> {{ session('booking.end_time') }}</p>
 <p><strong>Scrivania:</strong> {{ $desk->identifier }}</p>
