@@ -9,6 +9,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Support\Facades\URL;
 use italia\DesignLaravelTheme\Events\BuildingMenu;
+use Illuminate\Pagination\Paginator;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +26,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(Dispatcher $events)
     {
+
+        Paginator::useBootstrap();
+        
         if (env('APP_FORCE_HTTPS', false)) {
             \URL::forceScheme('https');
         }
