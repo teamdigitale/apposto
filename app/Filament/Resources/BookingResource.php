@@ -72,12 +72,12 @@ class BookingResource extends Resource
                 Tables\Columns\TextColumn::make('from_date')
                     ->dateTime()
                     ->sortable()->formatStateUsing(function ($state): string {
-                        return \Carbon\Carbon::parse($state)->format('d-m-Y h:m') ;                  
+                        return \Carbon\Carbon::parse($state)->format('d-m-Y H:i') ;                  
                     }),
                 Tables\Columns\TextColumn::make('to_date')
                     ->dateTime()
                     ->sortable()->formatStateUsing(function ($state): string {
-                        return \Carbon\Carbon::parse($state)->format('d-m-Y h:m') ;                  
+                        return \Carbon\Carbon::parse($state)->format('d-m-Y H:i') ;                  
                     }),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()

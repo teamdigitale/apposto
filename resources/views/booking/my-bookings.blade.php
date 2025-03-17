@@ -10,8 +10,8 @@
             <strong>Scrivania:</strong> {{ $booking->desk->identifier }} <br>
             <strong>Piano:</strong> {{ $booking->desk->plan->description }} <br>
             <strong>Sede:</strong> {{ $booking->desk->plan->workplace->name }} <br>
-            <strong>Data da:</strong> {{ Carbon\Carbon::parse($booking->from_date)->format('d-m-Y h:m') }} <br>
-            <strong>Data a:</strong> {{ Carbon\Carbon::parse($booking->to_date)->format('d-m-Y h:m') }} <br>
+            <strong>Data da:</strong> {{ Carbon\Carbon::parse($booking->from_date)->format('d-m-Y H:i') }} <br>
+            <strong>Data a:</strong> {{ Carbon\Carbon::parse($booking->to_date)->format('d-m-Y H:i') }} <br>
               
             </li>
         @endforeach

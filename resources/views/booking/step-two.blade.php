@@ -10,7 +10,7 @@
 <p>
     <strong>Hai scelto</strong><br />
     <strong>DA: </strong> {{ Carbon\Carbon::parse($request->start_date)->format('d-m-Y') }} - {{$request->start_time}}<br />
-    <strong>A: </strong> {{ Carbon\Carbon::parse($request->end_date)->format('d-m-Y h:m') }} - {{$request->end_time}}
+    <strong>A: </strong> {{ Carbon\Carbon::parse($request->end_date)->format('d-m-Y') }} - {{$request->end_time}}
 </p>
 
 <h4>Seleziona un piano:</h4>
