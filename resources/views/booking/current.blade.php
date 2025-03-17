@@ -14,8 +14,8 @@
             @foreach($bookings as $booking)
                 <tr>
                     <td>{{ $booking->desk->identifier }}</td>
-                    <td>{{ Carbon\Carbon::parse($booking->from_date)->format('d-m-Y h:m') }}</td>
-                    <td>{{ Carbon\Carbon::parse($booking->to_date)->format('d-m-Y h:m') }}</td>
+                    <td>{{ Carbon\Carbon::parse($booking->from_date)->format('d-m-Y H:i') }}</td>
+                    <td>{{ Carbon\Carbon::parse($booking->to_date)->format('d-m-Y H:i') }}</td>
                     <td>
                         <form action="{{ route('bookings.cancel', $booking->id) }}" method="POST">
                             @csrf

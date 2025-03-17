@@ -29,7 +29,7 @@ class BookingController extends Controller
         {
             $request->merge(['end_date' => $request['start_date']]);
         }
-        
+
         $validated = $request->validate([
             'workplace_id' => 'required|exists:workplaces,id',
             'start_date' => 'required|date',
@@ -162,6 +162,7 @@ class BookingController extends Controller
     {
        
         $bookingData = $request->session()->get('booking');
+       // dd( Carbon::createFromTimestamp(strtotime($bookingData['start_date'] . $bookingData['start_time'] . ":00")) );
         
         $booking = Booking::create([
             'desk_id' => $request->desk_id,
@@ -174,6 +175,8 @@ class BookingController extends Controller
             'user_id' => Auth::id(),
             'status'    => 0
         ]);
+
+       // dd($booking);
 
 
         Auth::user()->notify(new \App\Notifications\NewBooking($booking));
