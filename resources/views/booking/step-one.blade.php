@@ -29,7 +29,6 @@
 <?php
 $time= date('H:i');
 list($hours, $minutes) = explode(":", $time);
-echo $hours."<br/>";
 if($minutes >30){
     $minutes = '00';
     $hours +=1;
@@ -38,7 +37,6 @@ if($minutes >30){
 }
 $timestamp_new_start = ($hours * 3600) + ($minutes * 60);
 $timestamp_new_end = ($hours * 3600) + ($minutes * 60);
-echo $minutes;
 ?>
         <div class="container-fluid">
             <div class="row">
