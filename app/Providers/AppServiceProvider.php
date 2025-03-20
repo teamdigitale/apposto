@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\URL;
 use italia\DesignLaravelTheme\Events\BuildingMenu;
 use Illuminate\Pagination\Paginator;
 
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
