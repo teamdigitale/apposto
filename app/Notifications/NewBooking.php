@@ -47,7 +47,7 @@ class NewBooking extends Notification
                     ->subject('Conferma Prenotazione')
                     ->greeting('Ciao ' . $notifiable->name)
                     ->line('La tua prenotazione è stata convalidata!')
-                    ->line("Data/e ". Carbon::parse($this->booking->from_date)->format('d-m-Y h:m'). " # ". Carbon::parse($this->booking->to_date)->format('d-m-Y h:m'))
+                    ->line("Data/e ". Carbon::parse($this->booking->from_date)->format('d-m-Y H:i'). " # ". Carbon::parse($this->booking->to_date)->format('d-m-Y H:i'))
                     ->line('La tua prenotazione è stata convalidata!')
                     ->line("Scrivania: " . $desk->identifier . " - Piano: ". $desk->plan->description . " Sede: ". $desk->plan->workplace->name)
                     ->action('Vedi Prenotazione', url('/my-bookings' ))

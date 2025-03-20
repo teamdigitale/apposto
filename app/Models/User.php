@@ -78,5 +78,16 @@ class User extends Authenticatable
         $this->notify(new ResetPasswordNotification($token));
     }
 
+    public function getEmailAttribute($value)
+    {
+        //print($value);
+        return strtolower($value);
+    }
+    
+    public function setEmailAttribute($value)
+    {
+        $this->attributes['email'] = strtolower($value);
+    }
+
  
 }
