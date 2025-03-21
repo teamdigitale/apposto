@@ -14,6 +14,17 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Tables\Filters\Filter;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\DatePicker;
+use Carbon\Carbon;
+use Filament\Tables\Actions\Action;
+use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use Livewire\TemporaryUploadedFile;
+use App\Imports\BookingImport;
+use Filament\Forms\Components\FileUpload;
+use Illuminate\Support\Facades\Storage;
 
 class BookingResource extends Resource
 {
@@ -45,7 +56,9 @@ class BookingResource extends Resource
 
     public static function table(Table $table): Table
     {
-        
+        if (!Storage::disk('public')->exists('uploads')) {
+            Storage::disk('public')->makeDirectory('uploads');
+        }
 
          // 0 confermata
             // 1 cancellata
@@ -95,7 +108,30 @@ class BookingResource extends Resource
                         1 => "cancellata", 
                         2 => "rubata", 
                         3 => "conclusa"
+                    ]),
+
+                    Filter::make('user_name')
+                    ->form([
+                        TextInput::make('user_name')
+                            ->label('Nome Utente')
+                            ->placeholder('Inserisci nome utente'),
                     ])
+                    ->query(fn ($query, $data) => 
+                        $query->when($data['user_name'], fn ($q, $value) => 
+                            $q->whereHas('user', fn ($q) => $q->where('name', 'like', "%$value%"))
+                        )
+                    ),
+
+                    Filter::make('date_range')
+                    ->form([
+                        DatePicker::make('from_date')->label('Da Data'),
+                        DatePicker::make('to_date')->label('A Data'),
+                    ])
+                    ->query(fn ($query, $data) => 
+                        $query->when($data['from_date'] && $data['to_date'], fn ($q) => 
+                            $q->whereBetween('from_date', [$data['from_date'], $data['to_date']])
+                        )
+                    ),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -104,6 +140,24 @@ class BookingResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
+            ])
+            ->headerActions([
+                Action::make('importBookings')
+                    ->label('Importa Prenotazioni')
+                    ->icon('heroicon-s-newspaper')
+                    ->form([
+                        FileUpload::make('file')
+                        ->label('Seleziona File')
+                        ->disk('public')  // Usa il disco "public"
+                        ->directory('uploads') // Salva in storage/app/public/uploads
+                        ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv'])
+                        ->required(),
+                    ])
+                    ->action(function (array $data) {
+                        $filePath = Storage::disk('public')->path($data['file']);
+                        Excel::import(new BookingImport, $filePath);
+                    })
+                    ->successNotificationTitle('Importazione completata!'),
             ]);
     }
 
