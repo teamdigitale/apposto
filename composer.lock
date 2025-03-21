@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bea660e9a7d52ebcbfdb127b0ad0cc65",
+    "content-hash": "6ccf3e009f9d7ecba301369e88c8b733",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -5273,21 +5273,21 @@
         },
         {
             "name": "resend/resend-laravel",
-            "version": "v0.16.0",
+            "version": "v0.16.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/resend/resend-laravel.git",
-                "reference": "3bcdeb9ddec1c870c458380a5c2659f1b82c70f6"
+                "reference": "df4b654f42d8f306e78ce2b90f10762f77608ecb"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/resend/resend-laravel/zipball/3bcdeb9ddec1c870c458380a5c2659f1b82c70f6",
-                "reference": "3bcdeb9ddec1c870c458380a5c2659f1b82c70f6",
+                "url": "https://api.github.com/repos/resend/resend-laravel/zipball/df4b654f42d8f306e78ce2b90f10762f77608ecb",
+                "reference": "df4b654f42d8f306e78ce2b90f10762f77608ecb",
                 "shasum": ""
             },
             "require": {
-                "illuminate/http": "^10.0|^11.0",
-                "illuminate/support": "^10.0|^11.0",
+                "illuminate/http": "^10.0|^11.0|^12.0",
+                "illuminate/support": "^10.0|^11.0|^12.0",
                 "php": "^8.1",
                 "resend/resend-php": "^0.15.0",
                 "symfony/mailer": "^6.2|^7.0"
@@ -5295,8 +5295,8 @@
             "require-dev": {
                 "friendsofphp/php-cs-fixer": "^3.14",
                 "mockery/mockery": "^1.5",
-                "orchestra/testbench": "^8.17|^9.0",
-                "pestphp/pest": "^2.0"
+                "orchestra/testbench": "^8.17|^9.0|^10.0",
+                "pestphp/pest": "^2.0|^3.7"
             },
             "type": "library",
             "extra": {
@@ -5336,9 +5336,9 @@
             ],
             "support": {
                 "issues": "https://github.com/resend/resend-laravel/issues",
-                "source": "https://github.com/resend/resend-laravel/tree/v0.16.0"
+                "source": "https://github.com/resend/resend-laravel/tree/v0.16.1"
             },
-            "time": "2025-01-29T04:22:11+00:00"
+            "time": "2025-03-02T04:15:23+00:00"
         },
         {
             "name": "resend/resend-php",
