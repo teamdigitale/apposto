@@ -19,6 +19,7 @@
     </form>
 
     <div id="result" class="mt-4"></div>
+    <div id="availableHours" class="mt-3"></div>
 </div>
 
 @section('js')
@@ -29,29 +30,47 @@ document.getElementById("checkDeskForm").addEventListener("submit", function(eve
     let deskIdentifier = document.getElementById("desk_identifier").value;
     let date = document.getElementById("date").value;
 
-    fetch("{{ route('desk.checkAvailability') }}?desk_identifier=" + deskIdentifier + "&date=" + date, {
-        method: "GET",
+    fetch("{{ route('desk.checkAvailability') }}", {
+        method: "POST",
         headers: {
-            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content")
-        }
+            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ desk_identifier: deskIdentifier, date: date })
     })
     .then(response => response.json())
     .then(data => {
         let resultDiv = document.getElementById("result");
+        let availableHoursDiv = document.getElementById("availableHours");
 
         if (data.success) {
-            if (data.isOccupied) {
+            console.log(data);
+            if (data.availableHours.length == 0) {
                 resultDiv.innerHTML = `<div class="alert alert-danger">La scrivania <strong>${data.desk.identifier}</strong> è <strong>OCCUPATA</strong> per la data selezionata.</div>`;
+                availableHoursDiv.innerHTML = ""; // Svuotiamo gli orari disponibili
             } else {
                 resultDiv.innerHTML = `<div class="alert alert-success">La scrivania <strong>${data.desk.identifier}</strong> è <strong>DISPONIBILE</strong> per la data selezionata.</div>`;
+
+                // Mostriamo gli orari disponibili
+                if (data.availableHours.length == 27) {
+                    availableHoursDiv.innerHTML = `<div class="alert alert-warning">Disponibile tutto il giorno</div>`;
+                }else{
+                    let hoursList = data.availableHours.map(hour => `<li class="list-group-item">${hour}</li>`).join('');
+                    availableHoursDiv.innerHTML = `
+                        <h5>Orari disponibili:</h5>
+                        <ul class="list-group">${hoursList}</ul>
+                    `;
+                } 
             }
         } else {
             resultDiv.innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
+            availableHoursDiv.innerHTML = "";
         }
     })
     .catch(error => {
         console.error("Errore:", error);
         document.getElementById("result").innerHTML = `<div class="alert alert-danger">Errore nella verifica della scrivania.</div>`;
+        document.getElementById("availableHours").innerHTML = "";
     });
 });
 </script>

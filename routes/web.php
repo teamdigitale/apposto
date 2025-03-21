@@ -20,6 +20,7 @@ Route::get('/dashboard', function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/contacts', [ContactController::class, 'index'])->name('contacts.index');
+    Route::post('/bookings/multi-cancel', [BookingController::class, 'multiCancel'])->name('bookings.multiCancel');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -48,7 +49,7 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/booking/cancel/{id}', [BookingController::class, 'cancel'])->name('bookings.cancel');
 
-    Route::get('/check-desk-availability', [BookingController::class, 'checkAvailability'])->name('desk.checkAvailability');
+    Route::post('/check-desk-availability', [BookingController::class, 'checkAvailability'])->name('desk.checkAvailability');
     Route::get('/booking/check-desk', function () {
         return view('booking.check-desk');
     })->name('desk.check');

@@ -26,18 +26,18 @@
         @endif
     <form action="{{ route('booking.step.two') }}" method="POST">
         @csrf
-<?php
-$time= date('H:i');
-list($hours, $minutes) = explode(":", $time);
-if($minutes >30){
-    $minutes = '00';
-    $hours +=1;
-}else{
-    $minutes = '30';
-}
-$timestamp_new_start = ($hours * 3600) + ($minutes * 60);
-$timestamp_new_end = ($hours * 3600) + ($minutes * 60);
-?>
+        <?php
+        $time= date('H:i');
+        list($hours, $minutes) = explode(":", $time);
+        if($minutes >30){
+            $minutes = '00';
+            $hours +=1;
+        }else{
+            $minutes = '30';
+        }
+        $timestamp_new_start = ($hours * 3600) + ($minutes * 60);
+        $timestamp_new_end = ($hours * 3600) + ($minutes * 60);
+        ?>
         <div class="container-fluid">
             <div class="row">
                 <div class="col-4 col-md-3">
@@ -132,9 +132,9 @@ $timestamp_new_end = ($hours * 3600) + ($minutes * 60);
     const timeSelect = document.getElementById("start_time");
 
     function generateTimeOptions(startTimestamp) {
-        timeSelect.innerHTML = ""; // Svuota il select
+        timeSelect.innerHTML = "";  
 
-        const maxTimestamp = 21 * 3600; // 21:00 in secondi
+        const maxTimestamp = 21 * 3600;  
 
         for (let timestamp = startTimestamp; timestamp <= maxTimestamp; timestamp += 1800) {
             let hourMins = new Date(timestamp * 1000).toISOString().substr(11, 5); // Formato HH:MM
