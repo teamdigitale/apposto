@@ -170,28 +170,81 @@ class BookingController extends Controller
 
     }
 
+    public function multiCancel(Request $request)
+    {
+        $bookingIds = $request->input('booking_ids');
+
+        if (!$bookingIds) {
+            return back()->with('error', 'Nessuna prenotazione selezionata.');
+        }
+        
+        Booking::whereIn('id', $bookingIds)->update(['status'=>1]);
+
+        return back()->with('success', 'Prenotazioni cancellate con successo.');
+    }
+
     public function complete(Request $request)
     {
        
         $bookingData = $request->session()->get('booking');
-       // dd( Carbon::createFromTimestamp(strtotime($bookingData['start_date'] . $bookingData['start_time'] . ":00")) );
-        
-        $booking = Booking::create([
+        $timezone = env('APP_TIMEZONE', 'Europe/Rome');
+
+        $booking_save = [
             'desk_id' => $request->desk_id,
             'start_date' => $bookingData['start_date'],
             'end_date' => $bookingData['end_date'],
             'start_time' => $bookingData['start_time'],
             'end_time' => $bookingData['end_time'],
-            'from_date'  => Carbon::createFromTimestamp(strtotime($bookingData['start_date'] . $bookingData['start_time'] . ":00")),
-            'to_date'  => Carbon::createFromTimestamp(strtotime($bookingData['end_date'] . $bookingData['end_time'] . ":00")),
+            'from_date'  => Carbon::createFromTimestamp(strtotime($bookingData['start_date'] . $bookingData['start_time'] . ":00"))->setTimezone($timezone),
+            'to_date'  => Carbon::createFromTimestamp(strtotime($bookingData['end_date'] . $bookingData['end_time'] . ":00"))->setTimezone($timezone),
             'user_id' => Auth::id(),
             'status'    => 0
-        ]);
+        ];
 
-       // dd($booking);
+        if($bookingData['start_date'] == $bookingData['end_date']){
+            $booking = Booking::create($booking_save);
+        }
+        else
+        {
+            $dates = [];
 
+            $startDate = Carbon::parse($bookingData['start_date']);
+            $endDate = Carbon::parse($bookingData['end_date']);
+            
+            $diff = $startDate->diffInDays($endDate);
+            
+            $i=0;
+            // Itera tra le date e salva solo i giorni lavorativi
+            while ($startDate->lte($endDate)) {
+               
+                if ($startDate->isWeekday()) { 
 
-        Auth::user()->notify(new \App\Notifications\NewBooking($booking));
+                    $start_time = ($i == 0) ? $bookingData['start_time'] : "07:30";
+                    $end_time = ($i == $diff ) ? $bookingData['end_time']  : "21:00";
+                    $start_date = $startDate->toDateString();
+
+                    $dates[] = [
+                        'desk_id' => $request->desk_id,
+                        'start_date' => $start_date,
+                        'end_date' => $start_date,
+                        'start_time' => $start_time,
+                        'end_time' => $end_time,
+                        'from_date'  => Carbon::createFromTimestamp(strtotime($start_date . $start_time . ":00"))->setTimezone($timezone),
+                        'to_date'  => Carbon::createFromTimestamp(strtotime($start_date . $end_time . ":00"))->setTimezone($timezone),
+                        'user_id' => Auth::id(),
+                        'status'    => 0
+                    ];
+                   
+                }
+                $i++;
+                $startDate->addDay(); // Passa al giorno successivo
+            }
+    
+            // Salva tutte le prenotazioni in un'unica query
+            Booking::insert($dates);
+        }
+        
+        Auth::user()->notify(new \App\Notifications\NewBooking($booking_save));
                 //->toMail($booking->user);
 
         $request->session()->forget('booking');
@@ -257,24 +310,53 @@ class BookingController extends Controller
             'desk_identifier' => 'required|string',
             'date' => 'required|date',
         ]);
-
+    
         $desk = Desk::where('identifier', $request->desk_identifier)->first();
-
+    
         if (!$desk) {
             return response()->json(['success' => false, 'message' => 'Scrivania non trovata.']);
         }
-
-        // Controlla se esiste una prenotazione attiva per la scrivania in quella data
-        $isOccupied = Booking::where('desk_id', $desk->id)
+    
+        // Genera tutte le fasce orarie di 30 minuti tra 07:30 e 21:00
+        $workingHours = [];
+        $startTime = Carbon::createFromTime(7, 30);
+        $endTime = Carbon::createFromTime(21, 0);
+    
+        while ($startTime < $endTime) {
+            $workingHours[] = $startTime->format('H:i');
+            $startTime->addMinutes(30);
+        }
+    
+        $availableHours = $workingHours; // Inizialmente tutti gli orari sono disponibili
+    
+        // Recupera tutte le prenotazioni per quella scrivania e data
+        $bookings = Booking::where('desk_id', $desk->id)
             ->where('status', 0)
             ->whereDate('from_date', '<=', $request->date)
             ->whereDate('to_date', '>=', $request->date)
-            ->exists();
-
+            ->get();
+    
+        // Costruisce una lista di slot occupati
+        $occupiedHours = [];
+    
+        foreach ($bookings as $booking) {
+            $startHour = Carbon::parse($booking->from_date);
+            $endHour = Carbon::parse($booking->to_date);
+    
+            while ($startHour < $endHour) {
+                $occupiedHours[] = $startHour->format('H:i');
+                $startHour->addMinutes(30);
+            }
+        }
+    
+        // Filtra gli orari disponibili rimuovendo quelli già occupati
+        $availableHours = array_diff($workingHours, $occupiedHours);
+    
         return response()->json([
             'success' => true,
             'desk' => $desk,
-            'isOccupied' => $isOccupied,
+            'isOccupied' => !empty($occupiedHours),
+            'availableHours' => array_values($availableHours),
         ]);
     }
 
