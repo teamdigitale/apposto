@@ -48,7 +48,6 @@ A Helm chart for Kubernetes
 | env.MAIL_HOST | string | `"127.0.0.1"` |  |
 | env.MAIL_MAILER | string | `"log"` |  |
 | env.MAIL_PORT | string | `"2525"` |  |
-| env.MAIL_SCHEME | string | `""` |  |
 | env.PHP_CLI_SERVER_WORKERS | string | `"4"` |  |
 | env.QUEUE_CONNECTION | string | `"database"` |  |
 | env.SESSION_DOMAIN | string | `""` |  |
@@ -89,6 +88,8 @@ A Helm chart for Kubernetes
 | postgresql.enabled | bool | `true` |  |
 | readinessProbe.httpGet.path | string | `"/"` |  |
 | readinessProbe.httpGet.port | string | `"http"` |  |
+| recaptchaSecretKey | string | `""` |  |
+| recaptchaSiteKey | string | `""` |  |
 | replicaCount | int | `1` |  |
 | resources | object | `{}` |  |
 | securityContext.fsGroup | int | `1000` |  |

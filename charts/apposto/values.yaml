@@ -163,7 +163,7 @@ env:
   CACHE_PREFIX:
 
   MAIL_MAILER: log
-  MAIL_SCHEME: ""
+  #MAIL_SCHEME: ""
   MAIL_HOST: "127.0.0.1"
   MAIL_PORT: "2525"
   MAIL_FROM_ADDRESS: "hello@example.com"
@@ -182,6 +182,8 @@ appKey: ""
 mailUsername: ""
 mailPassword: ""
 mailgunSecret: ""
+recaptchaSiteKey: ""
+recaptchaSecretKey: ""
 
 statefulset:
   storage:
