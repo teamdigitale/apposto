@@ -68,13 +68,13 @@ class BookingResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('desk.identifier')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('desk.plan.description')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('desk.plan.workplace.name')
                     ->numeric()
                     ->sortable(),
@@ -118,7 +118,9 @@ class BookingResource extends Resource
                     ])
                     ->query(fn ($query, $data) => 
                         $query->when($data['user_name'], fn ($q, $value) => 
-                            $q->whereHas('user', fn ($q) => $q->where('name', 'like', "%$value%"))
+                            $q->whereHas('user', fn ($q) => 
+                                $q->whereRaw('LOWER(name) LIKE ?', ["%".strtolower($value)."%"])
+                            )
                         )
                     ),
 
