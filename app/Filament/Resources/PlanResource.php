@@ -43,7 +43,7 @@ class PlanResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('description')
-                    ->searchable()->label("Piano - Zona"),
+                    ->searchable()->sortable()->label("Piano - Zona"),
                 Tables\Columns\TextColumn::make('workplace.name')
                     ->numeric()
                     ->sortable()->label("Sede"),
@@ -67,6 +67,7 @@ class PlanResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\ReplicateAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

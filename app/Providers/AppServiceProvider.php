@@ -13,6 +13,10 @@ use Illuminate\Pagination\Paginator;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Booking;
+use App\Observers\BookingObserver;
+use App\Helpers\Holidays;
+use Illuminate\Support\Facades\Blade;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,11 +28,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(Authenticatable::class, Admin::class);
     }
 
-    /**
-     * Bootstrap any application services.
-     */
-    public function boot(Dispatcher $events)
+
+    public function boot()
     {
+        Booking::observe(BookingObserver::class);
+
+        Blade::if('holiday', function ($date) {
+            return Holidays::isHoliday($date);
+        });
 
         Paginator::useBootstrap();
         
@@ -36,14 +43,31 @@ class AppServiceProvider extends ServiceProvider
             \URL::forceScheme('https');
         }
 
-        $events->listen(BuildingMenu::class, function (BuildingMenu $event) {
+        app(Dispatcher::class)->listen(BuildingMenu::class, function (BuildingMenu $event) {
             $event->address = '';
-            if(!Auth()->check()){
-
-                
-                //$this->header_menu
+            if (!Auth::check()) {
                 $event->menu->header_menu = [];
             }
+
+            if (Auth::user() ){
+                if(Auth::user()->gestiamopresenze) {
+                    $event->menu->header_menu[] = [
+                        "url" => '/presences',
+                        "text" => 'Timesheet',
+                        "active" => 0,
+                    ];
+                }
+
+                if (Auth::user()->superuser) {
+                    $event->menu->header_menu[] = [
+                        "url" => '/presences/overview',
+                        "text" => 'Resoconto',
+                        "active" => 0,
+                    ];
+                }
+            }
         });
+
+        
     }
 }

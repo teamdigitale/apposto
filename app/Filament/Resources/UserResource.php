@@ -14,6 +14,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Hash;
+use App\Filament\Resources\UserResource\RelationManagers\PresenceRelationManager;
 
 class UserResource extends Resource
 {
@@ -46,9 +47,24 @@ class UserResource extends Resource
                     ->relationship(name: 'team',titleAttribute: 'label')
                     //->options(Team::all()->pluck('label', 'id'))
                     ->searchable()->required(),
+                Forms\Components\Select::make('default_workstation_id')
+                    ->label('Postazione di default')
+                    ->relationship(name: 'defaultWorkstation',titleAttribute: 'identifier')
+                    //->options(Team::all()->pluck('label', 'id'))
+                    ->searchable(),
                     Forms\Components\TextInput::make('phone'),    
                 Forms\Components\Toggle::make('allow_view')
-                    ->required()->label('Condivide Info')
+                    ->required()->label('Condivide Info'),    
+                Forms\Components\Toggle::make('gestiamopresenze')
+                    ->required()->label('Gestiamo presenze'),
+                Forms\Components\Toggle::make('superuser')
+                    ->required()->label('Super User'),
+                Forms\Components\Toggle::make('addetto_emergenza')
+                    ->label('Add Emergenza/Antincendio'),
+                Forms\Components\Toggle::make('addetto_al_primo_soccorso')
+                    ->label('Certificato Primo Soccorso'),
+                Forms\Components\TextInput::make('ruolo')
+                    ->label('Ruolo'),    
             ]);
     }
 
@@ -76,6 +92,16 @@ class UserResource extends Resource
                 ->sortable()->label("Team appartenenza"),
                 Tables\Columns\IconColumn::make('allow_view')
                     ->boolean()->label('Condivide Info'),
+                Tables\Columns\IconColumn::make('superuser')
+                    ->boolean()->label('Super User'),
+                Tables\Columns\IconColumn::make('gestiamopresenze')
+                    ->boolean()->label('Timesheet'),
+                Tables\Columns\TextColumn::make('ferie_totali')
+                    ->numeric()->label('Ferie Tot'),
+                Tables\Columns\TextColumn::make('ferie_usate')
+                    ->numeric()->label('Ferie Usate'),
+                Tables\Columns\TextColumn::make('giorni_in_smart')
+                    ->numeric()->label('Smart'),
             ])
             ->filters([
                 //
@@ -85,6 +111,7 @@ class UserResource extends Resource
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(), 
                 Tables\Actions\RestoreAction::make(), 
+                Tables\Actions\ReplicateAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -98,7 +125,7 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            PresenceRelationManager::class,
         ];
     }
 

@@ -15,6 +15,14 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class BookingImport implements ToModel, WithValidation, WithStartRow
 {
+    protected $timezone;
+
+    public function __construct()
+    {
+        $this->timezone = config('app.timezone', 'Europe/Rome');
+    }
+
+
     public function startRow(): int
     {
         return 2;
@@ -42,7 +50,6 @@ class BookingImport implements ToModel, WithValidation, WithStartRow
         if (!$user || !$desk) {
             return null; // Se l'utente o la scrivania non esistono, ignora la riga
         }
-        $timezone = env('APP_TIMEZONE', 'Europe/Rome');
 
         if (is_numeric($row[2])) {
             $fromA = Carbon::instance(Date::excelToDateTimeObject($row[2]));
@@ -69,8 +76,8 @@ class BookingImport implements ToModel, WithValidation, WithStartRow
             'end_date' => $end_date_stat,
             'start_time' => $start_time_stat,
             'end_time' => $end_time_stat,
-            'from_date'  => Carbon::createFromTimestamp(strtotime("$start_date_stat . $start_time_stat"))->setTimezone($timezone),
-            'to_date'  => Carbon::createFromTimestamp(strtotime("$end_date_stat . $end_time_stat"))->setTimezone($timezone),
+            'from_date'  => Carbon::createFromTimestamp(strtotime("$start_date_stat . $start_time_stat"))->setTimezone($this->timezone),
+            'to_date'  => Carbon::createFromTimestamp(strtotime("$end_date_stat . $end_time_stat"))->setTimezone($this->timezone),
             'user_id' => $user->id,
             'status'    => 0
         ];
@@ -102,8 +109,8 @@ class BookingImport implements ToModel, WithValidation, WithStartRow
                         'end_date' => $start_date,
                         'start_time' => $start_time,
                         'end_time' => $end_time,
-                        'from_date'  => Carbon::createFromTimestamp(strtotime("$start_date . $start_time"))->setTimezone($timezone),
-                        'to_date'  => Carbon::createFromTimestamp(strtotime("$start_date . $end_time"))->setTimezone($timezone),
+                        'from_date'  => Carbon::createFromTimestamp(strtotime("$start_date . $start_time"))->setTimezone($this->timezone),
+                        'to_date'  => Carbon::createFromTimestamp(strtotime("$start_date . $end_time"))->setTimezone($this->timezone),
                         'user_id' => $user->id,
                         'status'    => 0
                     ];
