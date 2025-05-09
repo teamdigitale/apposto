@@ -104,14 +104,125 @@
             </div>
         </div>
         
+        <input type="hidden" id="multiday" value="{{ Auth::user()->team->allow_multi_day ? '1' : '0' }}" />                
+        <button type="submit" class="btn btn-primary mt-4">Prenota postazione generica</button>
+        @if( Auth::user()->gestiamopresenze )
+            <input type="hidden" id="deskprefix" value="{{ Auth::user()->default_workstation_id }}" />  
+            <button class="btn btn-success  mt-4" type="submit" id="passnextButton" disabled>Prenotazione preferita veloce</button>
+            <span id="error-message" class="text-danger mt-2 d-block" style="display:none;"></span>
 
-        <button type="submit" class="btn btn-primary mt-4">Prossimo</button>
+        @endif
     </form>
     
     @section('js')
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
     <script> console.log('XXXXXX!');
     </script>
+    <script>
+        $(document).ready(function () {
+            const $startDate = $('#start_date');
+            const $endDate = $('#end_date');
+            const $startTime = $('#start_time');
+            const $endTime = $('#end_time');
+            const $passNextButton = $('#passnextButton');
+            const $errorMessage = $('#error-message');
+            const multiday = $('#multiday').val() === '1';
+
+            function isDateRangeValid() {
+                if (!multiday) return true;
+
+                const start = new Date(`${$startDate.val()}T${$startTime.val()}`);
+                const end = new Date(`${$endDate.val()}T${$endTime.val()}`);
+                return end > start;
+            }
+
+            function checkAvailability() {
+                const startDateVal = $startDate.val();
+                const endDateVal = $endDate.val();
+                const startTimeVal = $startTime.val();
+                const endTimeVal = $endTime.val();
+
+                const allFieldsFilled = multiday
+                    ? (startDateVal && endDateVal && startTimeVal && endTimeVal)
+                    : (startDateVal && startTimeVal && endTimeVal);
+
+                if (!allFieldsFilled) {
+                    $passNextButton.prop('disabled', true);
+                    $errorMessage.hide();
+                    return;
+                }
+
+                if (multiday && !isDateRangeValid()) {
+                    $passNextButton.prop('disabled', true);
+                    $errorMessage.text('⚠️ L\'intervallo di date e orari non è valido.').show();
+                    return;
+                }
+
+                $errorMessage.hide();
+
+                $.ajax({
+                    url: "{{ route('booking.checkWorkstationAvailability') }}",
+                    method: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify({
+                        start_date: startDateVal,
+                        end_date: endDateVal,
+                        start_time: startTimeVal,
+                        end_time: endTimeVal
+                    }),
+                    headers: {
+                        "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                    },
+                    success: function (response) {
+                        if (response.available || response.can_override) {
+                            $passNextButton.prop('disabled', false);
+                            $errorMessage.hide();
+                        } else {
+                            $passNextButton.prop('disabled', true);
+                            const by = response.occupied_by ? ` da ${response.occupied_by}` : '';
+                            $errorMessage.text(`⚠️ Postazione occupata${by}.`).show();
+                        }
+                    },
+                    error: function () {
+                        $passNextButton.prop('disabled', true);
+                        $errorMessage.text('⚠️ Errore nel controllo disponibilità.').show();
+                    }
+                });
+            }
+
+            $startDate.on('change', checkAvailability);
+            $endDate.on('change', checkAvailability);
+            $startTime.on('change', checkAvailability);
+            $endTime.on('change', checkAvailability);
+
+            $passNextButton.on('click', function (e) {
+                e.preventDefault();
+
+                const form = $('<form>', {
+                    method: 'POST',
+                    action: "{{ route('booking.complete') }}"
+                });
+
+                form.append($('<input>', { type: 'hidden', name: '_token', value: '{{ csrf_token() }}' }));
+
+                const fields = {
+                    desk_id: $('#deskprefix').val()
+                };
+
+                $.each(fields, function (name, value) {
+                    form.append($('<input>', {
+                        type: 'hidden',
+                        name: name,
+                        value: value || ''
+                    }));
+                });
+
+                $('body').append(form);
+                form.submit();
+            });
+        });
+        </script>
+
     <script type="text/javascript">
         $(function(){
             var dtToday = new Date();

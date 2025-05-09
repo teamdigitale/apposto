@@ -1,0 +1,17 @@
+includes:
+    - ./vendor/nunomaduro/larastan/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - app
+        - routes
+
+    ignoreErrors:
+        - '#Call to an undefined method [a-zA-Z0-9_\\]+::where.*#'
+        - '#Access to an undefined property [a-zA-Z0-9_\\]+::\$.*#'
+
+    excludePaths:
+        - tests/*
+        - bootstrap/*
+        - database/*

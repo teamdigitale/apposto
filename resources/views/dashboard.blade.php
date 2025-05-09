@@ -31,6 +31,19 @@
                       </div>
                     </div>
 
+                    @if( Auth::user()->gestiamopresenze )
+                      <div class="cmp-card-latest-messages mb-3 mb-30" data-bs-toggle="modal" data-bs-target="#">
+                        <div class="card-flex shadow-sm px-4 pt-4 pb-4 rounded">
+                          
+                          
+                          <div class="card-body p-0 my-2">
+                            <h3 class="green-title-big t-primary mb-8"><a href="{{ route('presences.index') }}" class="text-decoration-none" data-element="service-link">Gestisci il tuo foglio presenze</a></h3>
+                            <p class="text-paragraph">Programma le tue presenze/assenze in ufficio.</p>
+                          </div>
+                        </div>
+                      </div>
+                    @endif
+
                     <div class="cmp-card-latest-messages mb-3 mb-30" data-bs-toggle="modal" data-bs-target="#">
                       <div class="card-flex shadow-sm px-4 pt-4 pb-4 rounded">
                         
