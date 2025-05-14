@@ -20,4 +20,9 @@ class Booking extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function presence()
+    {
+        return $this->hasOne(Presence::class);
+    }
 }

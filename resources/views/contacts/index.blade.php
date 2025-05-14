@@ -18,6 +18,9 @@
                 <th>Nome</th>
                 <th>Email</th>
                 <th>Telefono</th>
+                <th>Ruolo</th>
+                <th>Emergenza/Antincendio</th>
+                <th>Primo Soccorso</th>
                 <th>Team</th>
                 <th>Desk</th>
             </tr>
@@ -29,19 +32,24 @@
                     <td>{{ $contact->name }}</td>
                     <td>{{ $contact->email }}</td>
                     <td>{{ $contact->phone }}</td>
+                    <td>{{ $contact->ruolo }}</td>
+                    <td>{{ $contact->addetto_emergenza ? "SI" : "NO" }}</td>
+                    <td>{{ $contact->addetto_al_primo_soccorso ? "SI" : "NO" }}</td>
                     <td>{{ $contact->team->label }}</td>
                     <td>  <?php  
                     if (count($contact->bookings_active) > 0){
                         $booking_desk = $contact->bookings_active->first()->desk;
                         echo $booking_desk->identifier. " - ". $booking_desk->plan->description . " - " .$booking_desk->plan->workplace->name;
                 
-            } else{
-                echo "-";
-            }?></td>
+                    } elseif($contact->defaultWorkstation){
+                        echo "Di solito qui: " .$contact->defaultWorkstation->identifier;
+                    } else{
+                        echo "-";
+                    }?></td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="3" class="text-center">Nessun contatto trovato.</td>
+                    <td colspan="8" class="text-center">Nessun contatto trovato.</td>
                 </tr>
             @endforelse
         </tbody>

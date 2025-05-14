@@ -30,7 +30,15 @@ class User extends Authenticatable
         'priority',
         'allow_view',
         'phone',
-        'desk'
+        'default_workstation_id',
+        'ferie_totali',
+        'ferie_usate',
+        'gestiamopresenze',
+        'giorni_in_smart',
+        'superuser',
+        'addetto_emergenza',
+        'addetto_al_primo_soccorso',
+        'ruolo'
     ];
 
     /**
@@ -87,6 +95,16 @@ class User extends Authenticatable
     public function setEmailAttribute($value)
     {
         $this->attributes['email'] = strtolower($value);
+    }
+
+    public function defaultWorkstation()
+    {
+        return $this->belongsTo(Desk::class, 'default_workstation_id');
+    }
+
+    public function presences()
+    {
+        return $this->hasMany(Presence::class);
     }
 
  

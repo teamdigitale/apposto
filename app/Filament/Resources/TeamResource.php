@@ -45,7 +45,7 @@ class TeamResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('label')
-                    ->searchable()->label("Nome Team"),
+                    ->searchable()->sortable()->label("Nome Team"),
                 Tables\Columns\TextColumn::make('plans.description')
                     ->numeric()
                     ->sortable()->label("Piano accessibile"),
@@ -65,6 +65,7 @@ class TeamResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\ReplicateAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
