@@ -10,9 +10,8 @@ class EnsureLivewireIsProtected
 {
     public function handle(Request $request, Closure $next)
     {
-        if ($request->is('livewire/*') && !auth()->check()) {
-            abort(403, 'Accesso non autorizzato');
-        }
+        // Rimuovi il blocco, oppure logga per debug
+        // logger('Livewire request unauthenticated: ' . $request->path());
 
         return $next($request);
     }
