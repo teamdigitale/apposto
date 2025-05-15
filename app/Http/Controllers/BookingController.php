@@ -229,40 +229,33 @@ class BookingController extends Controller
             'user_id' => $this->user->id,
             'status'    => 0
         ];
-        if($startDate == $endDate){
-            if(!Holidays::isHoliday($startDate)){
-                $booking = Booking::create($booking_save);
-            }
-        }
-        else
-        {
-            $dates = collect();
-            
-            while ($startDate->lte($endDate)) {
-                $current = $startDate->copy();
-                $start_time = $current->equalTo($bookingData['start_date']) ? $bookingData['start_time'] : '07:30';
-                $end_time = $current->equalTo($bookingData['end_date']) ? $bookingData['end_time'] : '21:00';
-        
-                if ($current->isWeekday() && !Holidays::isHoliday($current)) {
-                    $dates->push([
-                        'desk_id' => $request->desk_id,
-                        'start_date' => $current->toDateString(),
-                        'end_date' => $current->toDateString(),
-                        'start_time' => $start_time,
-                        'end_time' => $end_time,
-                        'from_date' => Carbon::parse("{$current->toDateString()} {$start_time}"),
-                        'to_date' => Carbon::parse("{$current->toDateString()} {$end_time}"),
-                        'user_id' => $this->user->id,
-                        'status' => 0,
-                    ]);
-                }
-                $startDate->addDay();
-            }
 
-            $dates->each(function ($data) {
-                Booking::create($data);
-            });
+        $dates = collect();
+        
+        while ($startDate->lte($endDate)) {
+            $current = $startDate->copy();
+            $start_time = $current->equalTo($bookingData['start_date']) ? $bookingData['start_time'] : '07:30';
+            $end_time = $current->equalTo($bookingData['end_date']) ? $bookingData['end_time'] : '21:00';
+    
+            if ($current->isWeekday() && !Holidays::isHoliday($current)) {
+                $dates->push([
+                    'desk_id' => $request->desk_id,
+                    'start_date' => $current->toDateString(),
+                    'end_date' => $current->toDateString(),
+                    'start_time' => $start_time,
+                    'end_time' => $end_time,
+                    'from_date' => Carbon::parse("{$current->toDateString()} {$start_time}"),
+                    'to_date' => Carbon::parse("{$current->toDateString()} {$end_time}"),
+                    'user_id' => $this->user->id,
+                    'status' => 0,
+                ]);
+            }
+            $startDate->addDay();
         }
+
+        $dates->each(function ($data) {
+            Booking::create($data);
+        });
         
         $this->user->notify(new \App\Notifications\NewBooking($booking_save));
         
