@@ -10,7 +10,6 @@ class EnsureLivewireIsProtected
 {
     public function handle(Request $request, Closure $next)
     {
-        // Rimuovi il blocco, oppure logga per debug
         // logger('Livewire request unauthenticated: ' . $request->path());
 
         return $next($request);
