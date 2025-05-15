@@ -214,7 +214,7 @@ class BookingController extends Controller
     public function complete(Request $request)
     {
         $bookingData = $request->session()->get('booking');
-
+       // dd($bookingData);
         $startDate = Carbon::parse($bookingData['start_date']);
         $endDate = Carbon::parse($bookingData['end_date']);
 
@@ -237,15 +237,13 @@ class BookingController extends Controller
         else
         {
             $dates = collect();
-            $i = 0;
-            $diff = $startDate->diffInDays($endDate);
-
+            
             while ($startDate->lte($endDate)) {
                 $current = $startDate->copy();
+                $start_time = $current->equalTo($bookingData['start_date']) ? $bookingData['start_time'] : '07:30';
+                $end_time = $current->equalTo($bookingData['end_date']) ? $bookingData['end_time'] : '21:00';
+        
                 if ($current->isWeekday() && !Holidays::isHoliday($current)) {
-                    $start_time = $i === 0 ? $bookingData['start_time'] : '07:30';
-                    $end_time = $i === $diff ? $bookingData['end_time'] : '21:00';
-
                     $dates->push([
                         'desk_id' => $request->desk_id,
                         'start_date' => $current->toDateString(),
@@ -258,7 +256,6 @@ class BookingController extends Controller
                         'status' => 0,
                     ]);
                 }
-                $i++;
                 $startDate->addDay();
             }
 
