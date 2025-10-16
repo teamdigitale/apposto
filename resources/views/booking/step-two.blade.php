@@ -20,6 +20,18 @@
     @endforeach
 </div>
 
+@if($canBookExclusive)
+<div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" name="is_exclusive" id="isExclusive" value="1">
+    <label class="form-check-label" for="isExclusive">
+        <strong>Prenotazione Esclusiva</strong>
+        <small class="d-block text-muted">
+            Riservare l'intera area al tuo team (nessun altro potrà prenotare)
+        </small>
+    </label>
+</div>
+@endif
+
 <div class="row">
     <div class="col-md-6">
         <h4 class="mt-4">Scrivanie disponibili:</h4>

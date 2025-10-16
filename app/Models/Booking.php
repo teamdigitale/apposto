@@ -9,7 +9,16 @@ class Booking extends Model
    //
 
 
-    protected $fillable = ['user_id', 'desk_id', 'from_date', 'to_date', 'start_date', 'end_date', 'start_time', 'end_time', 'status'];
+    protected $fillable = [ 'plan_id', 'is_exclusive', 'user_id', 'desk_id', 'from_date', 'to_date', 'start_date', 'end_date', 'start_time', 'end_time', 'status'];
+
+    protected $casts = [
+        'is_exclusive' => 'boolean',
+    ];
+
+    public function plan()
+    {
+        return $this->belongsTo(Plan::class);
+    }
 
     public function desk()
     {
@@ -24,5 +33,10 @@ class Booking extends Model
     public function presence()
     {
         return $this->hasOne(Presence::class);
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
     }
 }

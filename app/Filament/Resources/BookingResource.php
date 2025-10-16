@@ -51,6 +51,8 @@ class BookingResource extends Resource
                     ->numeric(),
                 Forms\Components\DateTimePicker::make('from_date'),
                 Forms\Components\DateTimePicker::make('to_date'),
+                Forms\Components\Toggle::make('is_exclusive')
+                    ->required()->label('ESCLUSIVO')
             ]);
     }
 
@@ -72,12 +74,12 @@ class BookingResource extends Resource
                 Tables\Columns\TextColumn::make('desk.identifier')
                     ->numeric()
                     ->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('desk.plan.description')
-                    ->numeric()
-                    ->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('desk.plan.workplace.name')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()->label("Sede"),
+                Tables\Columns\TextColumn::make('desk.plan.description')
+                    ->numeric()
+                    ->sortable()->label("Zona"),
                 Tables\Columns\TextColumn::make('status')->formatStateUsing(function ($state): string {
                         $array_val = ["confermata", "cancellata", "rubata", "conclusa" ];                  
                         return $array_val[$state];
@@ -100,6 +102,8 @@ class BookingResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\IconColumn::make('is_exclusive')
+                    ->boolean()->label('ESCLUSIVO'),
             ])
             ->filters([
                 SelectFilter::make('status')

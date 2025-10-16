@@ -6,7 +6,7 @@ use App\Helpers\Holidays;
 use App\Models\{Booking, Desk, Plan, Presence, Workplace};
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\{Auth, Cache};
+use Illuminate\Support\Facades\{Auth, Cache, DB};
 
 class BookingController extends Controller
 {
@@ -49,7 +49,7 @@ class BookingController extends Controller
         $validated = $request->validate($rules);
 
         if (!$isMultiDay) {
-	        $validated['end_date'] = $request->input('start_date');
+            $validated['end_date'] = $request->input('start_date');
         }
 
         if (!$this->user->default_workstation_id) {
@@ -58,6 +58,22 @@ class BookingController extends Controller
 
         $from = Carbon::parse("{$request->start_date} {$request->start_time}")->format('Y-m-d H:i:s');
         $to = Carbon::parse("{$request->end_date} {$request->end_time}")->format('Y-m-d H:i:s');
+
+        // Verifica se l'area è prenotata in modo esclusivo
+        $exclusiveBooking = $this->checkExclusiveAreaBooking(
+            $this->user->default_workstation_id, 
+            $from, 
+            $to
+        );
+
+        if ($exclusiveBooking) {
+            return response()->json([
+                'available' => false,
+                'is_exclusive' => true,
+                'message' => "L'area è prenotata in modo esclusivo da {$exclusiveBooking->team_name} fino al " . 
+                            Carbon::parse($exclusiveBooking->to_date)->format('d/m/Y H:i')
+            ]);
+        }
 
         $existing = Booking::where('desk_id', $this->user->default_workstation_id)
             ->join('users', 'bookings.user_id', '=', 'users.id')
@@ -107,17 +123,29 @@ class BookingController extends Controller
         $request->session()->put('booking', $validated);
         $workplace = Workplace::findOrFail($request->workplace_id);
 
-        return view('booking.step-two', compact('workplace', 'request'));
+        // Verifica se il team può prenotare in modo esclusivo
+        $canBookExclusive = $this->user->team->can_book_exclusive;
+
+        return view('booking.step-two', compact('workplace', 'request', 'canBookExclusive'));
     }
 
     public function stepThree(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'desk_id' => 'required|exists:desks,id',
+            'is_exclusive' => 'nullable|boolean'
         ]);
 
+        // Aggiorna la sessione con desk_id e is_exclusive
+        $bookingData = $request->session()->get('booking', []);
+        $bookingData['desk_id'] = $validated['desk_id'];
+        $bookingData['is_exclusive'] = $validated['is_exclusive'] ?? false;
+        $request->session()->put('booking', $bookingData);
+
         $desk = Desk::findOrFail($request->desk_id);
-        return view('booking.step-three', compact('desk', 'request'));
+        $canBookExclusive = $this->user->team->can_book_exclusive;
+        
+        return view('booking.step-three', compact('desk', 'request', 'canBookExclusive'));
     }
 
     public function getPlans($workplace_id)
@@ -138,6 +166,32 @@ class BookingController extends Controller
 
         $startFullDateTime = $startDate->copy()->setTimeFromTimeString($startTime)->format('Y-m-d H:i:s');
         $endFullDateTime = $endDate->copy()->setTimeFromTimeString($endTime)->format('Y-m-d H:i:s');
+
+        // Verifica prenotazione esclusiva dell'intera area/piano
+        $exclusiveBooking = Booking::where('plan_id', $plan->id)
+            ->where('is_exclusive', true)
+            ->where('status', 0)
+            ->where(function ($query) use ($startFullDateTime, $endFullDateTime) {
+                $query->where('from_date', '<', $endFullDateTime)
+                      ->where('to_date', '>', $startFullDateTime);
+            })
+            ->with(['user.team'])
+            ->whereHas('user', function($query) {
+                $query->where('team_id', '!=', $this->user->team_id);
+            })
+            ->first();
+
+        if ($exclusiveBooking) {
+            $teamName = $exclusiveBooking->user->team->name ?? 'Un altro team';
+            
+            return response()->json([
+                'plan' => $plan,
+                'desks' => [],
+                'is_exclusive' => true,
+                'message' => "L'intera area è prenotata in modo esclusivo da {$teamName}",
+                'exclusive_until' => Carbon::parse($exclusiveBooking->to_date)->format('d/m/Y H:i')
+            ]);
+        }
 
         $desks = $plan->desks->map(function ($desk) use ($startFullDateTime, $endFullDateTime) {
             $existing = $desk->bookings()
@@ -167,6 +221,7 @@ class BookingController extends Controller
         return response()->json([
             'plan' => $plan,
             'desks' => $desks,
+            'is_exclusive' => false
         ]);
     }
 
@@ -176,6 +231,15 @@ class BookingController extends Controller
 
         $start = Carbon::parse(($booking['start_date'] ?? now()) . ' ' . ($booking['start_time'] ?? '00:00:00'));
         $end = Carbon::parse(($booking['end_date'] ?? now()) . ' ' . ($booking['end_time'] ?? '23:59:59'));
+
+        // Verifica prenotazione esclusiva dell'area
+        $exclusiveBooking = $this->checkExclusiveAreaBooking($desk->id, $start, $end);
+        
+        if ($exclusiveBooking) {
+            return response()->json([
+                'message' => "L'area è prenotata in modo esclusivo da {$exclusiveBooking->team_name}"
+            ], 403);
+        }
 
         $existingBooking = $desk->bookings()
                 ->where('status', 0)
@@ -187,7 +251,7 @@ class BookingController extends Controller
                 ->first();
 
         if ($existingBooking && $existingBooking->user && $this->user->priority > $existingBooking->user->priority) {
-            $existingBooking->update(['status' => 2]); // contrassegna come "rubata"
+            $existingBooking->update(['status' => 2]);
 
             return response()->json(['success' => 'Continua e prendi la prenotazione'], 200);
         }
@@ -214,61 +278,97 @@ class BookingController extends Controller
     public function complete(Request $request)
     {
         $bookingData = $request->session()->get('booking');
-       // dd($bookingData);
         $startDate = Carbon::parse($bookingData['start_date']);
         $endDate = Carbon::parse($bookingData['end_date']);
+        
+        // Recupera is_exclusive dalla sessione (salvato in stepThree)
+        $isExclusive = $bookingData['is_exclusive'] ?? false;
+        
+        // Verifica permessi per prenotazione esclusiva
+        if ($isExclusive && !$this->user->team->can_book_exclusive) {
+            return back()->with('error', 'Il tuo team non ha i permessi per effettuare prenotazioni esclusive.');
+        }
+
+        // Ottieni il plan_id dalla desk (usa il desk_id dalla sessione)
+        $desk = Desk::findOrFail($bookingData['desk_id']);
+        $planId = $desk->plan_id;
+
+        // Se è una prenotazione esclusiva, verifica che non ci siano altre prenotazioni
+        if ($isExclusive) {
+            $from = Carbon::parse("{$bookingData['start_date']} {$bookingData['start_time']}");
+            $to = Carbon::parse("{$bookingData['end_date']} {$bookingData['end_time']}");
+            
+            $conflictingBookings = Booking::whereHas('desk', function($query) use ($planId) {
+                    $query->where('plan_id', $planId);
+                })
+                ->where('status', 0)
+                ->where(function ($query) use ($from, $to) {
+                    $query->where('from_date', '<', $to)
+                          ->where('to_date', '>', $from);
+                })
+                ->whereHas('user', function($query) {
+                    $query->where('team_id', '!=', $this->user->team_id);
+                })
+                ->exists();
+
+            if ($conflictingBookings) {
+                return back()->with('error', 'Impossibile creare una prenotazione esclusiva: ci sono già altre prenotazioni nell\'area nel periodo selezionato.');
+            }
+        }
 
         $booking_save = [
-            'desk_id' => $request->desk_id,
+            'desk_id' => $bookingData['desk_id'],
+            'plan_id' => $planId,
             'start_date' => $bookingData['start_date'],
             'end_date' => $bookingData['end_date'],
             'start_time' => $bookingData['start_time'],
             'end_time' => $bookingData['end_time'],
-            'from_date'  => Carbon::createFromTimestamp(strtotime($bookingData['start_date'] . $bookingData['start_time'] . ":00"))->setTimezone($this->timezone),
-            'to_date'  => Carbon::createFromTimestamp(strtotime($bookingData['end_date'] . $bookingData['end_time'] . ":00"))->setTimezone($this->timezone),
+            'from_date' => Carbon::createFromTimestamp(strtotime($bookingData['start_date'] . $bookingData['start_time'] . ":00"))->setTimezone($this->timezone),
+            'to_date' => Carbon::createFromTimestamp(strtotime($bookingData['end_date'] . $bookingData['end_time'] . ":00"))->setTimezone($this->timezone),
             'user_id' => $this->user->id,
-            'status'    => 0
+            'status' => 0,
+            'is_exclusive' => $isExclusive
         ];
-        if($startDate == $endDate){
-            if(!Holidays::isHoliday($startDate)){
-                $booking = Booking::create($booking_save);
-            }
-        }
-        else
-        {
-            $dates = collect();
-            
-            while ($startDate->lte($endDate)) {
-                $current = $startDate->copy();
-                $start_time = $current->equalTo($bookingData['start_date']) ? $bookingData['start_time'] : '07:30';
-                $end_time = $current->equalTo($bookingData['end_date']) ? $bookingData['end_time'] : '21:00';
-        
-                if ($current->isWeekday() && !Holidays::isHoliday($current)) {
-                    $dates->push([
-                        'desk_id' => $request->desk_id,
-                        'start_date' => $current->toDateString(),
-                        'end_date' => $current->toDateString(),
-                        'start_time' => $start_time,
-                        'end_time' => $end_time,
-                        'from_date' => Carbon::parse("{$current->toDateString()} {$start_time}"),
-                        'to_date' => Carbon::parse("{$current->toDateString()} {$end_time}"),
-                        'user_id' => $this->user->id,
-                        'status' => 0,
-                    ]);
-                }
-                $startDate->addDay();
-            }
 
+        $dates = collect();
+        
+        $currentDate = $startDate->copy();
+        while ($currentDate->lte($endDate)) {
+            $start_time = $currentDate->equalTo($bookingData['start_date']) ? $bookingData['start_time'] : '07:30';
+            $end_time = $currentDate->equalTo($bookingData['end_date']) ? $bookingData['end_time'] : '21:00';
+    
+            if ($currentDate->isWeekday() && !Holidays::isHoliday($currentDate)) {
+                $dates->push([
+                    'desk_id' => $bookingData['desk_id'],
+                    'plan_id' => $planId,
+                    'start_date' => $currentDate->toDateString(),
+                    'end_date' => $currentDate->toDateString(),
+                    'start_time' => $start_time,
+                    'end_time' => $end_time,
+                    'from_date' => Carbon::parse("{$currentDate->toDateString()} {$start_time}"),
+                    'to_date' => Carbon::parse("{$currentDate->toDateString()} {$end_time}"),
+                    'user_id' => $this->user->id,
+                    'status' => 0,
+                    'is_exclusive' => $isExclusive
+                ]);
+            }
+            $currentDate->addDay();
+        }
+
+        DB::transaction(function () use ($dates, $booking_save) {
             $dates->each(function ($data) {
                 Booking::create($data);
             });
-        }
-        
-        $this->user->notify(new \App\Notifications\NewBooking($booking_save));
-        
+            
+            $this->user->notify(new \App\Notifications\NewBooking($booking_save));
+        });
+
+        $message = $isExclusive 
+            ? 'Prenotazione esclusiva completata! L\'intera area è riservata al tuo team.' 
+            : 'Prenotazione completata!';
 
         $request->session()->forget('booking');
-        return redirect()->route('booking.my')->with('success', 'Prenotazione completata!');
+        return redirect()->route('booking.my')->with('success', $message);
     }
 
     public function checkAvailability(Request $request)
@@ -279,6 +379,31 @@ class BookingController extends Controller
         ]);
 
         $desk = Desk::where('identifier', $request->desk_identifier)->firstOrFail();
+
+        // Verifica prenotazioni esclusive
+        $exclusiveBooking = Booking::where('plan_id', $desk->plan_id)
+            ->where('is_exclusive', true)
+            ->where('status', 0)
+            ->whereDate('from_date', '<=', $request->date)
+            ->whereDate('to_date', '>=', $request->date)
+            ->with(['user.team'])
+            ->whereHas('user', function($query) {
+                $query->where('team_id', '!=', $this->user->team_id);
+            })
+            ->first();
+
+        if ($exclusiveBooking) {
+            $teamName = $exclusiveBooking->user->team->name ?? 'Un altro team';
+            
+            return response()->json([
+                'success' => false,
+                'desk' => $desk,
+                'isOccupied' => true,
+                'is_exclusive' => true,
+                'message' => "L'intera area è prenotata in modo esclusivo da {$teamName}",
+                'availableHours' => []
+            ]);
+        }
 
         $workingHours = collect(range(27000, 75600, 1800))->map(function ($t) {
             return gmdate('H:i', $t);
@@ -306,6 +431,7 @@ class BookingController extends Controller
             'success' => true,
             'desk' => $desk,
             'isOccupied' => !empty($bookedSlots),
+            'is_exclusive' => false,
             'availableHours' => $availableHours,
         ]);
     }
@@ -355,5 +481,34 @@ class BookingController extends Controller
             ->paginate(10);
 
         return view('booking.current', compact('bookings'));
+    }
+
+    /**
+     * Verifica se esiste una prenotazione esclusiva dell'area per il periodo specificato
+     */
+    protected function checkExclusiveAreaBooking($deskId, $from, $to)
+    {
+        $desk = Desk::find($deskId);
+        if (!$desk) return null;
+
+        $booking = Booking::where('plan_id', $desk->plan_id)
+            ->where('is_exclusive', true)
+            ->where('status', 0)
+            ->where(function ($query) use ($from, $to) {
+                $query->where('from_date', '<', $to)
+                      ->where('to_date', '>', $from);
+            })
+            ->with(['user.team'])
+            ->whereHas('user', function($query) {
+                $query->where('team_id', '!=', $this->user->team_id);
+            })
+            ->first();
+
+        if ($booking) {
+            // Aggiungi il nome del team come attributo accessibile
+            $booking->team_name = $booking->user->team->name ?? 'Team sconosciuto';
+        }
+
+        return $booking;
     }
 }
