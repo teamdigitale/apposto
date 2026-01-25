@@ -39,6 +39,7 @@ spec:
             - mkdir
           args:
             - -p
+            - app/public
             - logs
             - framework/cache
             - framework/sessions
@@ -56,11 +57,14 @@ spec:
             - 1000:1000
             - bootstrap-cache
             - storage
+            - tmp
           volumeMounts:
             - name: bootstrap-cache
               mountPath: /mnt/bootstrap-cache
             - name: storage
               mountPath: /mnt/storage
+            - name: tmp
+              mountPath: /mnt/tmp
           workingDir: /mnt
         - name: migrate
           {{- with .Values.securityContext }}
@@ -147,7 +151,9 @@ spec:
               mountPath: /share/php/apposto/bootstrap/cache
             - name: storage
               mountPath: /share/php/apposto/storage
-     {{- with .Values.nodeSelector }}
+            - name: tmp
+              mountPath: /tmp
+      {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -161,6 +167,8 @@ spec:
       {{- end }}
       volumes:
         - name: bootstrap-cache
+          emptyDir: {}
+        - name: tmp
           emptyDir: {}
   volumeClaimTemplates:
     - metadata:

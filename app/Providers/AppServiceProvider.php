@@ -25,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(Dispatcher $events)
     {
-        if (env('APP_FORCE_HTTPS', 'true')) {
+        if (env('APP_FORCE_HTTPS', false)) {
             \URL::forceScheme('https');
         }
 
@@ -33,7 +33,7 @@ class AppServiceProvider extends ServiceProvider
             $event->address = '';
             if(!Auth()->check()){
 
-                
+
                 //$this->header_menu
                 $event->menu->header_menu = [];
             }

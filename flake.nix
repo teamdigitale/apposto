@@ -84,6 +84,8 @@
                   };
                   packages = [
                     pkgs.actionlint
+                    pkgs.azure-cli
+                    pkgs.helm-docs
                     pkgs.kubectl
                     pkgs.kubelogin
                     pkgs.kubernetes-helm
