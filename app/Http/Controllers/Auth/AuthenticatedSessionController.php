@@ -25,6 +25,10 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
+        $request->merge([
+            'email' => strtolower($request->input('email')) // Converte l'email in minuscolo
+        ]);
+        
         $request->authenticate();
 
         Booking::where('to_date', '<=',now())->where('status',0)->update(['status' => 3]);

@@ -10,7 +10,7 @@
 <p>
     <strong>Hai scelto</strong><br />
     <strong>DA: </strong> {{ Carbon\Carbon::parse($request->start_date)->format('d-m-Y') }} - {{$request->start_time}}<br />
-    <strong>A: </strong> {{ Carbon\Carbon::parse($request->end_date)->format('d-m-Y h:m') }} - {{$request->end_time}}
+    <strong>A: </strong> {{ Carbon\Carbon::parse($request->end_date)->format('d-m-Y') }} - {{$request->end_time}}
 </p>
 
 <h4>Seleziona un piano:</h4>
@@ -19,6 +19,18 @@
         <button class="btn btn-primary select-plan" data-plan-id="{{ $plan->id }}">{{ $plan->description }}</button>
     @endforeach
 </div>
+
+@if($canBookExclusive)
+<div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" name="is_exclusive" id="isExclusive" value="1">
+    <label class="form-check-label" for="isExclusive">
+        <strong>Prenotazione Esclusiva</strong>
+        <small class="d-block text-muted">
+            Riservare l'intera area al tuo team (nessun altro potrà prenotare)
+        </small>
+    </label>
+</div>
+@endif
 
 <div class="row">
     <div class="col-md-6">

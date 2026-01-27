@@ -41,13 +41,13 @@ class NewBooking extends Notification
     public function toMail(object $notifiable): MailMessage
     {
 
-        $desk = Desk::where('id', '=', $this->booking->desk_id)->first();
+        $desk = Desk::where('id', '=', $this->booking["desk_id"])->first();
        
         return (new MailMessage)
                     ->subject('Conferma Prenotazione')
                     ->greeting('Ciao ' . $notifiable->name)
                     ->line('La tua prenotazione è stata convalidata!')
-                    ->line("Data/e ". Carbon::parse($this->booking->from_date)->format('d-m-Y h:m'). " # ". Carbon::parse($this->booking->to_date)->format('d-m-Y h:m'))
+                    ->line("Data/e ".  Carbon::parse($this->booking["start_date"])->format('d-m-Y') ." - ".  $this->booking["start_time"] ." # ". Carbon::parse($this->booking["end_date"])->format('d-m-Y') ." - ".  $this->booking["end_time"])
                     ->line('La tua prenotazione è stata convalidata!')
                     ->line("Scrivania: " . $desk->identifier . " - Piano: ". $desk->plan->description . " Sede: ". $desk->plan->workplace->name)
                     ->action('Vedi Prenotazione', url('/my-bookings' ))

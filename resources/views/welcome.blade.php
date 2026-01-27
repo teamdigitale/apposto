@@ -7,7 +7,9 @@
             <div class="col-lg-6 order-2 order-lg-1">
               <div class="card mb-5">
                 <div class="card-body pb-5 px-0">
+                @auth <h2>Ciao  {{ Auth::user()->name }}</h2>  @endauth
                     <a class="text-decoration-none" href="#">
+                    
                     <h3 class="card-title">Benvenuti in questo applicativo del dipartimento che permette di prenotare una postazione in una delle sue sedi.</h3>
                     </a>
                   <div class="col-lg-10 col-xl-8 offset-lg-1 offset-xl-2 text-center">

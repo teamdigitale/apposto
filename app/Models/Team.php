@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Team extends Model
 {
     //
-    protected $fillable = ['label', 'allow_multi_day'];
+    protected $fillable = ['label', 'allow_multi_day', 'can_book_exclusive'];
 
     public function users()
     {

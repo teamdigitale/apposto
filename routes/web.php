@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\OtherController;
+use App\Http\Controllers\PresenceController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -19,7 +20,9 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/presences/overview', [\App\Http\Controllers\PresenceOverviewController::class, 'index'])->name('presences.overview');
     Route::get('/contacts', [ContactController::class, 'index'])->name('contacts.index');
+    Route::post('/bookings/multi-cancel', [BookingController::class, 'multiCancel'])->name('bookings.multiCancel');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -46,17 +49,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/booking/history', [BookingController::class, 'history'])->name('bookings.history');
     Route::get('/booking/current', [BookingController::class, 'current'])->name('bookings.current');
 
+    Route::get('/presences', [PresenceController::class, 'index'])->name('presences.index');
+    Route::post('/presences', [PresenceController::class, 'store'])->name('presences.store');
+
     Route::post('/booking/cancel/{id}', [BookingController::class, 'cancel'])->name('bookings.cancel');
 
-    Route::get('/check-desk-availability', [BookingController::class, 'checkAvailability'])->name('desk.checkAvailability');
-    Route::get('/booking/check-desk', function () {
-        return view('booking.check-desk');
-    })->name('desk.check');
-  /*  
-    Route::get('wizard', function () {
-        return view('default');
-    });
-*/
+    Route::post('/check-workstation-availability', [ BookingController::class, 'checkWorkstationAvailability'])->name('booking.checkWorkstationAvailability');
+    Route::post('/check-desk-availability', [BookingController::class, 'checkAvailability'])->name('desk.checkAvailability');
+    Route::get('/booking/check-desk', function () { return view('booking.check-desk');   })->name('desk.check');
+
 });
 
 require __DIR__.'/auth.php';

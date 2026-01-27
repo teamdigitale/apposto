@@ -34,8 +34,10 @@ class TeamResource extends Resource
                     ->label('Piani in cui poter accedere')
                     ->multiple()
                     ->relationship('plans', 'description'),
-                    Forms\Components\Toggle::make('allow_multi_day')
-                    ->required()->label('Può prenotare infiniti gg')
+                Forms\Components\Toggle::make('allow_multi_day')
+                    ->required()->label('Può prenotare infiniti gg'),
+                Forms\Components\Toggle::make('can_book_exclusive')
+                    ->required()->label('ESCLUSIVO')
                 
             ]);
     }
@@ -45,12 +47,14 @@ class TeamResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('label')
-                    ->searchable()->label("Nome Team"),
+                    ->searchable()->sortable()->label("Nome Team"),
                 Tables\Columns\TextColumn::make('plans.description')
                     ->numeric()
                     ->sortable()->label("Piano accessibile"),
                 Tables\Columns\IconColumn::make('allow_multi_day')
-                    ->boolean()->label(' 1_o_infiniti gg'),
+                    ->boolean()->label('1_o_infiniti gg'),
+                Tables\Columns\IconColumn::make('can_book_exclusive')
+                    ->boolean()->label('ESCLUSIVO'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -65,6 +69,7 @@ class TeamResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\ReplicateAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

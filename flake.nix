@@ -25,7 +25,7 @@
               pname = "apposto";
               version = "1.0.0";
               src = ./.;
-              vendorHash = "sha256-ezHlbARjnQqq3XJyjvjHeZTQzuSJ2wY5ZNxIMTVhAzE=";
+              vendorHash = "sha256-3gjVINMHbH0KMCAGSJF83fmatOi4tju9JXZ8xjq1G3M=";
               postInstall = ''
                 cd $out/share/php/apposto
                 php artisan livewire:publish --assets
@@ -53,11 +53,10 @@
                 }];
 
                 config = {
-                  Cmd = [ "octane:start" "--server=swoole" "--host=0.0.0.0" "--port=8000" ];
-                  Entrypoint = [
-                    "/bin/bash"
-                    "-c"
-                    "${appRoot}/artisan optimize && ${appRoot}/artisan config:cache && ${appRoot}/artisan route:cache && ${appRoot}/artisan view:cache && ${appRoot}/artisan serve --host=0.0.0.0 --port=8000"
+                  Cmd = [ "serve" ];
+                  Entrypoint = [ "${appRoot}/artisan" ];
+                  Env = [
+                    "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
                   ];
                   ExposedPorts = {
                     "8000" = { };
