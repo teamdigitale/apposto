@@ -182,11 +182,23 @@ appKey: ""
 mailUsername: ""
 mailPassword: ""
 mailgunSecret: ""
+recaptchaSiteKey: ""
+recaptchaSecretKey: ""
 
 statefulset:
   storage:
     size: 10G
 
+# External database configuration (used when postgresql.enabled=false)
+database:
+  host: ""
+  port: "5432"
+  name: "apposto"
+  username: "apposto"
+  password: ""
+  sslmode: "require"
+
+# PostgreSQL subchart (set enabled=false to use external database)
 postgresql:
   enabled: true
   auth:

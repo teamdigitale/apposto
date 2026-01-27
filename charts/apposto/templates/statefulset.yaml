@@ -79,6 +79,7 @@ spec:
           env:
             - name: DB_CONNECTION
               value: pgsql
+            {{- if .Values.postgresql.enabled }}
             - name: DB_HOST
               value: {{ .Release.Name }}-postgresql
             - name: DB_PORT
@@ -92,6 +93,30 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-postgresql
                   key: password
+            {{- else }}
+            - name: DB_HOST
+              value: {{ .Values.database.host | quote }}
+            - name: DB_PORT
+              value: {{ .Values.database.port | default "5432" | quote }}
+            - name: DB_DATABASE
+              value: {{ .Values.database.name | quote }}
+            - name: DB_USERNAME
+              value: {{ .Values.database.username | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "apposto.fullname" . }}
+                  key: DB_PASSWORD
+            {{- if .Values.database.sslmode }}
+            - name: DB_SSLMODE
+              value: {{ .Values.database.sslmode | quote }}
+            {{- end }}
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Chart.Name }}
+            - secretRef:
+                name: {{ .Chart.Name }}
           volumeMounts:
             - name: bootstrap-cache
               mountPath: /share/php/apposto/bootstrap/cache
@@ -112,6 +137,7 @@ spec:
           env:
             - name: DB_CONNECTION
               value: pgsql
+            {{- if .Values.postgresql.enabled }}
             - name: DB_HOST
               value: {{ .Release.Name }}-postgresql
             - name: DB_PORT
@@ -125,6 +151,25 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-postgresql
                   key: password
+            {{- else }}
+            - name: DB_HOST
+              value: {{ .Values.database.host | quote }}
+            - name: DB_PORT
+              value: {{ .Values.database.port | default "5432" | quote }}
+            - name: DB_DATABASE
+              value: {{ .Values.database.name | quote }}
+            - name: DB_USERNAME
+              value: {{ .Values.database.username | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "apposto.fullname" . }}
+                  key: DB_PASSWORD
+            {{- if .Values.database.sslmode }}
+            - name: DB_SSLMODE
+              value: {{ .Values.database.sslmode | quote }}
+            {{- end }}
+            {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ .Chart.Name }}
