@@ -44,7 +44,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         app(Dispatcher::class)->listen(BuildingMenu::class, function (BuildingMenu $event) {
-            $event->address = '';
+            // Note: removed dynamic property assignment ($event->address) deprecated in PHP 8.2+
             if (!Auth::check()) {
                 $event->menu->header_menu = [];
             }

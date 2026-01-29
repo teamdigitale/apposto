@@ -4,6 +4,7 @@ use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
 use Monolog\Processor\PsrLogMessageProcessor;
+use Monolog\Formatter\JsonFormatter;
 
 return [
 
@@ -18,7 +19,7 @@ return [
     |
     */
 
-    'default' => env('LOG_CHANNEL', 'stack'),
+    'default' => env('LOG_CHANNEL', 'stdout'),
 
     /*
     |--------------------------------------------------------------------------
@@ -29,10 +30,12 @@ return [
     | regarding deprecated PHP and library features. This allows you to get
     | your application ready for upcoming major versions of dependencies.
     |
+    | Note: empty string is treated as 'null' to avoid "Log [] is not defined" errors
+    |
     */
 
     'deprecations' => [
-        'channel' => env('LOG_DEPRECATIONS_CHANNEL', 'null'),
+        'channel' => env('LOG_DEPRECATIONS_CHANNEL', 'null') ?: 'null',
         'trace' => env('LOG_DEPRECATIONS_TRACE', false),
     ],
 
@@ -51,6 +54,25 @@ return [
     */
 
     'channels' => [
+
+        'stdout' => [
+            'driver' => 'monolog',
+            'handler' => StreamHandler::class,
+            'formatter' => JsonFormatter::class,
+            'formatter_with' => [
+                'batchMode' => JsonFormatter::BATCH_MODE_JSON,
+                'appendNewline' => true,
+            ],
+            'with' => [
+                'stream' => 'php://stdout',
+            ],
+            'processors' => [
+                PsrLogMessageProcessor::class,
+                \Monolog\Processor\WebProcessor::class,
+                \Monolog\Processor\IntrospectionProcessor::class,
+            ],
+            'level' => env('LOG_LEVEL', 'debug'),
+        ],
 
         'stack' => [
             'driver' => 'stack',
