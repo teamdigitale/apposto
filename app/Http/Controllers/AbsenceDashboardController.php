@@ -32,9 +32,10 @@ class AbsenceDashboardController extends Controller
         $startDate = Carbon::parse($validated['start_date']);
         $endDate = Carbon::parse($validated['end_date']);
         
-        // Ottieni tutti i progetti attivi
+        // Ottieni tutti i progetti attivi con i loro utenti
         $projects = Project::where('active', true)
             ->withCount('users')
+            ->with('users')  // Carica la relazione users per evitare N+1 query
             ->get();
         
         // Calcola le assenze per ogni progetto

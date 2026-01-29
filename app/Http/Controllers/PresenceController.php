@@ -58,50 +58,78 @@ class PresenceController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'date' => 'required|date',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
             'status' => 'required|in:presente,ferie,smart_working,permesso',
         ]);
     
         $user = $this->user;
+        
+        $startDate = Carbon::parse($validated['start_date']);
+        $endDate = Carbon::parse($validated['end_date']);
+        
+        // Genera tutte le date nel range (esclusi weekend e festivi)
+        $dates = [];
+        $currentDate = $startDate->copy();
+        
+        while ($currentDate->lte($endDate)) {
+            // Solo giorni lavorativi e non festivi
+            if ($currentDate->isWeekday() && !Holidays::isHoliday($currentDate)) {
+                $dates[] = $currentDate->format('Y-m-d');
+            }
+            $currentDate->addDay();
+        }
+        
+        if (empty($dates)) {
+            return response()->json([
+                'message' => 'Nessun giorno lavorativo nel periodo selezionato',
+                'dates' => []
+            ], 422);
+        }
 
-       // return response()->json(['message' => $validated]);
-
-        DB::transaction(function () use ($validated, $user) {
-            $presenza = Presence::updateOrCreate(
-                ['user_id' => $user->id, 'date' => $validated['date']],
-                ['status' => $validated['status']]
-            );
-    
-            if ($validated['status'] === 'presente') {
-                $timezone = config('app.timezone', 'Europe/Rome');
-                $start_time = "07:30";
-                $end_time = "21:00";
-                $date = $validated['date'];
-    
-                Booking::updateOrCreate(
-                    [
-                        'user_id' => $user->id,
-                        'start_date' => $date,
-                    ],
-                    [
-                        'desk_id' => $user->default_workstation_id,
-                        'end_date' => $date,
-                        'start_time' => $start_time,
-                        'end_time' => $end_time,
-                        'from_date' => Carbon::parse("$date $start_time", $timezone),
-                        'to_date' => Carbon::parse("$date $end_time", $timezone),
-                        'status' => 0,
-                    ]
+        DB::transaction(function () use ($dates, $validated, $user) {
+            $timezone = config('app.timezone', 'Europe/Rome');
+            $start_time = "07:30";
+            $end_time = "21:00";
+            
+            foreach ($dates as $date) {
+                // Crea/Aggiorna presenza
+                Presence::updateOrCreate(
+                    ['user_id' => $user->id, 'date' => $date],
+                    ['status' => $validated['status']]
                 );
-            } else {
-                Booking::where('user_id', $user->id)
-                    ->where('start_date', $validated['date'])
-                    ->update(['status' => 1]);
-
+        
+                if ($validated['status'] === 'presente') {
+                    // Crea booking
+                    Booking::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'start_date' => $date,
+                        ],
+                        [
+                            'desk_id' => $user->default_workstation_id,
+                            'end_date' => $date,
+                            'start_time' => $start_time,
+                            'end_time' => $end_time,
+                            'from_date' => Carbon::parse("$date $start_time", $timezone),
+                            'to_date' => Carbon::parse("$date $end_time", $timezone),
+                            'status' => 0,
+                        ]
+                    );
+                } else {
+                    // Cancella booking
+                    Booking::where('user_id', $user->id)
+                        ->where('start_date', $date)
+                        ->update(['status' => 1]);
+                }
             }
         });
 
-        return response()->json(['message' => 'Presenze salvate con successo!']);
+        return response()->json([
+            'message' => 'Presenze salvate con successo!',
+            'dates' => $dates,
+            'count' => count($dates)
+        ]);
     }
 
 }
