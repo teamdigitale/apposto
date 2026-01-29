@@ -65,6 +65,17 @@ class AppServiceProvider extends ServiceProvider
                         "active" => 0,
                     ];
                 }
+
+                $event->menu->header_menu[] = [
+                        "url" => '/projects',
+                        "text" => 'Progetti',
+                        "active" => 0,
+                    ];
+                $event->menu->header_menu[] = [
+                        "url" => '/absences/dashboard',
+                        "text" => 'Resonto Ferie',
+                        "active" => 0,
+                    ];
             }
         });
 

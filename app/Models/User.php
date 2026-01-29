@@ -107,5 +107,21 @@ class User extends Authenticatable
         return $this->hasMany(Presence::class);
     }
 
- 
+    public function projects()
+    {
+        return $this->belongsToMany(Project::class, 'project_user')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    public function getFerieUsateAttribute()
+    {
+        return $this->presences()->where('status', 'ferie')->count();
+    }
+
+    public function getRemainingLeaveDaysAttribute()
+    {
+        return $this->ferie_totali - $this->ferie_usate;
+    }
+
 }
