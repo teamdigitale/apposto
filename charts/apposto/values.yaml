@@ -146,7 +146,7 @@ env:
 
   LOG_CHANNEL: stack
   LOG_STACK: single
-  #LOG_DEPRECATIONS_CHANNEL: ""
+  LOG_DEPRECATIONS_CHANNEL: ""
   LOG_LEVEL: debug
 
   SESSION_DRIVER: database
@@ -189,6 +189,16 @@ statefulset:
   storage:
     size: 10G
 
+# External database configuration (used when postgresql.enabled=false)
+database:
+  host: ""
+  port: "5432"
+  name: "apposto"
+  username: "apposto"
+  password: ""
+  sslmode: "require"
+
+# PostgreSQL subchart (set enabled=false to use external database)
 postgresql:
   enabled: true
   auth:
