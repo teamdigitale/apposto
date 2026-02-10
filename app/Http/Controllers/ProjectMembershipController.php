@@ -35,37 +35,47 @@ class ProjectMembershipController extends Controller
      */
     public function join(Request $request, Project $project)
     {
-        // Laravel risolve automaticamente il model
-        // Niente più findOrFail necessario
+        $user = Auth::user();
         
+        // Verifica che il progetto sia attivo
         if (!$project->active) {
-            return back()->with('error', 'Progetto non attivo.');
+            return back()->with('error', 'Questo progetto non è più attivo.');
         }
         
+        // Verifica che l'utente non sia già nel progetto
+        if ($user->projects()->where('project_id', $project->id)->exists()) {
+            return back()->with('error', 'Sei già parte di questo progetto.');
+        }
+        
+        // Validazione ruolo (se fornito)
+        $validated = $request->validate([
+            'role' => 'nullable|string|max:255',
+        ]);
+        
+        // Unisciti al progetto con ruolo di default 'member'
         $user->projects()->attach($project->id, [
             'role' => $validated['role'] ?? 'member',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
         
-        return back()->with('success', "Unito al progetto!");
+        return back()->with('success', "Ti sei unito al progetto '{$project->name}' con successo!");
     }
 
     /**
      * Lascia un progetto
      */
-    public function leave($projectId)
+    public function leave(Project $project)
     {
         $user = Auth::user();
-        $project = Project::findOrFail($projectId);
             
         // Verifica che l'utente sia nel progetto
-        if (!$user->projects()->where('project_id', $projectId)->exists()) {
+        if (!$user->projects()->where('project_id', $project->id)->exists()) {
             return back()->with('error', 'Non fai parte di questo progetto.');
         }
         
         // Lascia il progetto
-        $user->projects()->detach($projectId);
+        $user->projects()->detach($project->id);
         
         return back()->with('success', "Hai lasciato il progetto '{$project->name}'.");
     }
@@ -73,7 +83,7 @@ class ProjectMembershipController extends Controller
     /**
      * Aggiorna il ruolo dell'utente in un progetto
      */
-    public function updateRole(Request $request, $projectId)
+    public function updateRole(Request $request, Project $project)
     {
         $user = Auth::user();
         
@@ -82,13 +92,14 @@ class ProjectMembershipController extends Controller
         ]);
         
         // Verifica che l'utente sia nel progetto
-        if (!$user->projects()->where('project_id', $projectId)->exists()) {
+        if (!$user->projects()->where('project_id', $project->id)->exists()) {
             return back()->with('error', 'Non fai parte di questo progetto.');
         }
         
         // Aggiorna il ruolo
-        $user->projects()->updateExistingPivot($projectId, [
-            'role' => $validated['role']
+        $user->projects()->updateExistingPivot($project->id, [
+            'role' => $validated['role'],
+            'updated_at' => now(),
         ]);
         
         return back()->with('success', 'Ruolo aggiornato con successo!');
@@ -97,14 +108,14 @@ class ProjectMembershipController extends Controller
     /**
      * Mostra i dettagli di un progetto e i suoi membri
      */
-    public function show($projectId)
+    public function show(Project $project)
     {
-        $project = Project::with(['users' => function($query) {
+        $project->load(['users' => function($query) {
             $query->withPivot('role', 'created_at');
-        }])->findOrFail($projectId);
+        }]);
         
         $user = Auth::user();
-        $isMember = $user->projects()->where('project_id', $projectId)->exists();
+        $isMember = $user->projects()->where('project_id', $project->id)->exists();
         
         return view('projects.show', compact('project', 'isMember'));
     }
