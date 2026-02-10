@@ -257,12 +257,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const day = String(endDate.getDate()).padStart(2, '0');
             const end = `${year}-${month}-${day}`;
             
-            console.log('📅 DRAG Selection:', {
-                startStr: info.startStr,
-                endStr: info.endStr,
-                correctedEnd: end
-            });
-            
             // Popola i campi
             startDateInput.value = start;
             endDateInput.value = end;
