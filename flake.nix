@@ -25,7 +25,7 @@
               pname = "apposto";
               version = "1.0.0";
               src = ./.;
-              vendorHash = "sha256-3gjVINMHbH0KMCAGSJF83fmatOi4tju9JXZ8xjq1G3M=";
+              vendorHash = "sha256-FHfwLwSa2VGamxKRNmQ2UADmHA0ApzdX7L0fBV2eeXs=";
               postInstall = ''
                 cd $out/share/php/apposto
                 php artisan livewire:publish --assets

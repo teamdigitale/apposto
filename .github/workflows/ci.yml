@@ -82,3 +82,48 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Push
         run: helm push -- *.tgz oci://ghcr.io/${{ github.repository }}/charts
+
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-24.04
+    needs: [containerImage, helmChart]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+      packages: read
+    steps:
+      - name: Setup Helm
+        uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4
+
+      - name: Azure Login
+        uses: azure/login@a65d910e8af852a8061c627c456678983e180302 # v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name ${{ secrets.AZURE_AKS_CLUSTER_NAME }} \
+            --overwrite-existing
+
+      - name: Log in to Helm registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Deploy to Kubernetes
+        run: |
+          helm upgrade --install apposto \
+            oci://ghcr.io/${{ github.repository }}/charts/apposto \
+            --namespace apposto \
+            --reuse-values \
+            --set "podAnnotations.commit-sha=${{ github.sha }}" \
+            --wait \
+            --timeout=10m \
+            --atomic
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status statefulset/apposto -n apposto --timeout=5m
+          echo "Deployed commit ${{ github.sha }} to production"
