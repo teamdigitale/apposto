@@ -54,6 +54,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/presences', [PresenceController::class, 'index'])->name('presences.index');
     Route::post('/presences', [PresenceController::class, 'store'])->name('presences.store');
+    Route::delete('/presences', [PresenceController::class, 'destroy'])->name('presences.delete');
     Route::get('/api/presences/stats', [PresenceController::class, 'getStats'])->name('presences.stats');
 
     Route::post('/booking/cancel/{id}', [BookingController::class, 'cancel'])->name('bookings.cancel');
@@ -64,7 +65,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/projects', [ProjectMembershipController::class, 'index'])->name('projects.index');
     Route::get('/projects/{project}', [ProjectMembershipController::class, 'show'])->name('projects.show');
+    Route::get('/projects/{project}/join/{role}', [ProjectMembershipController::class, 'joinSimple'])->name('projects.join.simple');
     Route::post('/projects/{project}/join', [ProjectMembershipController::class, 'join'])->name('projects.join');
+    Route::get('/projects/{project}/leave', [ProjectMembershipController::class, 'leaveSimple'])->name('projects.leave.simple');
     Route::delete('/projects/{project}/leave', [ProjectMembershipController::class, 'leave'])->name('projects.leave');
     Route::patch('/projects/{project}/update-role', [ProjectMembershipController::class, 'updateRole'])->name('projects.update-role');
     

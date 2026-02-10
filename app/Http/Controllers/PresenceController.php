@@ -243,4 +243,39 @@ class PresenceController extends Controller
         ]);
     }
 
+    /**
+     * Elimina una presenza specifica
+     */
+    public function destroy(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|date',
+        ]);
+        
+        $user = $this->user;
+        $date = $validated['date'];
+        
+        // Elimina la presenza
+        $deleted = Presence::where('user_id', $user->id)
+            ->where('date', $date)
+            ->delete();
+        
+        if ($deleted) {
+            // Elimina anche eventuale booking associato
+            Booking::where('user_id', $user->id)
+                ->where('start_date', $date)
+                ->update(['status' => 1]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Presenza eliminata con successo'
+            ]);
+        }
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Presenza non trovata'
+        ], 404);
+    }
+
 }

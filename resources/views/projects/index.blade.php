@@ -12,14 +12,12 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
 
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
 
@@ -83,85 +81,20 @@
                                         
                                         <div class="ms-3">
                                             <a href="{{ route('projects.show', $project->id) }}" 
-                                               class="btn btn-sm btn-outline-primary mb-2">
+                                               class="btn btn-sm btn-outline-primary">
                                                 <i class="bi bi-eye"></i> Dettagli
                                             </a>
                                             
-                                            <!-- Modal per aggiornare ruolo -->
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-outline-secondary mb-2" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#updateRoleModal{{ $project->id }}">
-                                                <i class="bi bi-pencil"></i> Ruolo
-                                            </button>
-                                            
-                                            <!-- Modal per lasciare progetto -->
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-outline-danger" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#leaveModal{{ $project->id }}">
+                                            <!-- Link Lascia progetto -->
+                                            <a href="{{ route('projects.leave.simple', $project->id) }}" 
+                                               class="btn btn-sm btn-outline-danger"
+                                               onclick="return confirm('Sei sicuro di voler lasciare il progetto {{ $project->name }}?')">
                                                 <i class="bi bi-box-arrow-right"></i> Lascia
-                                            </button>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Modal Aggiorna Ruolo -->
-                                <div class="modal fade" id="updateRoleModal{{ $project->id }}" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <form method="POST" action="{{ route('projects.update-role', $project->id) }}">
-                                                @csrf
-                                                @method('PATCH')
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Aggiorna Ruolo</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <p>Progetto: <strong>{{ $project->name }}</strong></p>
-                                                    <div class="mb-3">
-                                                        <label for="role{{ $project->id }}" class="form-label">Ruolo</label>
-                                                        <select name="role" id="role{{ $project->id }}" class="form-select" required>
-                                                            <option value="developer" {{ $project->pivot->role == 'developer' ? 'selected' : '' }}>Developer</option>
-                                                            <option value="designer" {{ $project->pivot->role == 'designer' ? 'selected' : '' }}>Designer</option>
-                                                            <option value="tester" {{ $project->pivot->role == 'tester' ? 'selected' : '' }}>Tester</option>
-                                                            <option value="manager" {{ $project->pivot->role == 'manager' ? 'selected' : '' }}>Manager</option>
-                                                            <option value="member" {{ $project->pivot->role == 'member' ? 'selected' : '' }}>Member</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                                                    <button type="submit" class="btn btn-primary">Aggiorna</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Modal Conferma Lascia -->
-                                <div class="modal fade" id="leaveModal{{ $project->id }}" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">Conferma Uscita</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <p>Sei sicuro di voler lasciare il progetto <strong>{{ $project->name }}</strong>?</p>
-                                                <p class="text-muted small">Non potrai più richiedere ferie per questo progetto.</p>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                                                <form method="POST" action="{{ route('projects.leave', $project->id) }}" class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-danger">Lascia Progetto</button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                             @endforeach
                         </div>
                     @endif
@@ -202,52 +135,16 @@
                                         </div>
                                         
                                         <div class="ms-3">
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-success" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#joinModal{{ $project->id }}">
+                                            <!-- Link diretto per unirsi al progetto -->
+                                            <a href="{{ route('projects.join.simple', [$project->id, 'member']) }}" 
+                                               class="btn btn-sm btn-success">
                                                 <i class="bi bi-plus-circle"></i> Unisciti
-                                            </button>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Modal Unisciti -->
-                                <div class="modal fade" id="joinModal{{ $project->id }}" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <form method="POST" action="{{ route('projects.join', $project->id) }}">
-                                                @csrf
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Unisciti al Progetto</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <p>Progetto: <strong>{{ $project->name }}</strong></p>
-                                                    @if($project->description)
-                                                        <p class="text-muted small">{{ $project->description }}</p>
-                                                    @endif
-                                                    
-                                                    <div class="mb-3">
-                                                        <label for="role_join{{ $project->id }}" class="form-label">Seleziona il tuo ruolo</label>
-                                                        <select name="role" id="role_join{{ $project->id }}" class="form-select">
-                                                            <option value="member">Member (Generico)</option>
-                                                            <option value="developer">Developer</option>
-                                                            <option value="designer">Designer</option>
-                                                            <option value="tester">Tester</option>
-                                                            <option value="manager">Manager</option>
-                                                        </select>
-                                                        <small class="text-muted">Potrai modificarlo successivamente</small>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                                                    <button type="submit" class="btn btn-success">Unisciti</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
                             @endforeach
                         </div>
                     @endif
@@ -275,4 +172,5 @@
         </div>
     </div>
 </div>
+
 </x-app-layout>

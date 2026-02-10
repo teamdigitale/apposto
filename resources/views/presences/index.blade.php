@@ -64,7 +64,9 @@
                         <i class="bi bi-lightbulb"></i> <strong>Come selezionare:</strong><br>
                         <strong>Opzione 1:</strong> Trascina col mouse sul calendario (drag)<br>
                         <strong>Opzione 2:</strong> Clicca due volte (inizio + fine)<br>
-                        <strong>Opzione 3:</strong> Compila manualmente i campi data sotto
+                        <strong>Opzione 3:</strong> Compila manualmente i campi data sotto<br>
+                        <hr class="my-2">
+                        <i class="bi bi-pencil"></i> <strong>Per modificare/eliminare:</strong> Clicca su una presenza già salvata (badge P, F, SW, Pe)
                     </div>
 
                     <form id="presence-form">
@@ -219,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         locale: 'it',
-        weekends: true,
+        weekends: false,           // ✅ NASCONDI SABATO E DOMENICA
         selectable: true,          // ✅ ABILITA SELEZIONE
         selectMirror: true,        // ✅ Mostra preview durante il drag
         unselectAuto: false,       // ✅ Non deseleziona automaticamente
@@ -242,9 +244,24 @@ document.addEventListener('DOMContentLoaded', function () {
             const start = info.startStr;
             
             // FullCalendar include un giorno in più nell'end, lo correggiamo
-            const endDate = new Date(info.end);
-            endDate.setDate(endDate.getDate() - 1);
-            const end = endDate.toISOString().split('T')[0];
+            // Lavoriamo direttamente con le stringhe per evitare problemi timezone
+            const endParts = info.endStr.split('-');
+            const endDate = new Date(
+                parseInt(endParts[0]),           // year
+                parseInt(endParts[1]) - 1,       // month (0-indexed)
+                parseInt(endParts[2]) - 1        // day - 1 per correggere
+            );
+            
+            const year = endDate.getFullYear();
+            const month = String(endDate.getMonth() + 1).padStart(2, '0');
+            const day = String(endDate.getDate()).padStart(2, '0');
+            const end = `${year}-${month}-${day}`;
+            
+            console.log('📅 DRAG Selection:', {
+                startStr: info.startStr,
+                endStr: info.endStr,
+                correctedEnd: end
+            });
             
             // Popola i campi
             startDateInput.value = start;
@@ -259,21 +276,58 @@ document.addEventListener('DOMContentLoaded', function () {
         dateClick: function(info) {
             const clickedDate = info.dateStr;
             
+            console.log('🖱️ CLICK Selection:', {
+                clicked: clickedDate,
+                currentStart: startDateInput.value,
+                currentEnd: endDateInput.value
+            });
+            
             // Se start vuoto, popola start
             if (!startDateInput.value) {
                 startDateInput.value = clickedDate;
+                endDateInput.value = ''; // Assicura che end sia vuoto
+                console.log('→ Set START:', clickedDate);
                 startDateInput.dispatchEvent(new Event('change'));
             }
             // Se start pieno ma end vuoto, popola end
-            else if (!endDateInput.value || startDateInput.value === endDateInput.value) {
+            else if (!endDateInput.value) {
+                // Se clicchi sulla stessa data di start, usa quella data per end
                 endDateInput.value = clickedDate;
+                console.log('→ Set END:', clickedDate);
                 endDateInput.dispatchEvent(new Event('change'));
             }
             // Se entrambi pieni, resetta e ricomincia
             else {
                 startDateInput.value = clickedDate;
                 endDateInput.value = '';
+                console.log('→ RESET to START:', clickedDate);
                 startDateInput.dispatchEvent(new Event('change'));
+            }
+        },
+        
+        // ✅ CLICK SU EVENTO ESISTENTE PER MODIFICARE/ELIMINARE
+        eventClick: function(info) {
+            // Se è festività, mostra solo nome
+            if (info.event.display === 'background') {
+                showAlert(`ℹ️ Festività: ${info.event.title}`, 'info');
+                return;
+            }
+            
+            // Se è un collega, mostra info senza permettere modifica
+            if (info.event.extendedProps.type === 'colleague') {
+                const userName = info.event.extendedProps.userName;
+                const status = info.event.extendedProps.status === 'ferie' ? 'Ferie' : 'Permesso';
+                const date = formatDate(info.event.startStr);
+                showAlert(`ℹ️ ${userName} - ${status} il ${date}`, 'info');
+                return;
+            }
+            
+            const eventDate = info.event.startStr;
+            const eventStatus = info.event.extendedProps.status;
+            
+            // Mostra modal di conferma per proprie presenze
+            if (confirm(`Presenza del ${formatDate(eventDate)}: ${getStatusLabel(eventStatus)}\n\nVuoi eliminare questa presenza?`)) {
+                deletePresence(eventDate, info.event);
             }
         }
     });
@@ -509,6 +563,60 @@ document.addEventListener('DOMContentLoaded', function () {
             case 'permesso': return 'Pe';
             default: return status;
         }
+    }
+    
+    // ==========================================
+    // FUNZIONI HELPER PER MODIFICA/ELIMINAZIONE
+    // ==========================================
+    
+    function formatDate(dateStr) {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+    
+    function getStatusLabel(status) {
+        const labels = {
+            'presente': '🏢 Presente',
+            'ferie': '🏖️ Ferie',
+            'smart_working': '💻 Smart Working',
+            'permesso': '⏰ Permesso'
+        };
+        return labels[status] || status;
+    }
+    
+    function deletePresence(date, eventObj) {
+        // Disabilita interazioni temporaneamente
+        calendar.setOption('selectable', false);
+        
+        fetch("{{ route('presences.delete') }}", {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ date: date })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Rimuovi evento dal calendario
+                eventObj.remove();
+                
+                showAlert('✅ Presenza eliminata con successo!', 'success');
+                
+                // Ricarica pagina dopo 1.5s per aggiornare contatori
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert('❌ ' + (data.message || 'Errore durante l\'eliminazione'), 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Errore:', error);
+            showAlert('❌ Errore durante l\'eliminazione', 'danger');
+        })
+        .finally(() => {
+            calendar.setOption('selectable', true);
+        });
     }
 
     // ==========================================
