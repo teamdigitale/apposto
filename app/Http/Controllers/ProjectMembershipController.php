@@ -33,32 +33,22 @@ class ProjectMembershipController extends Controller
     /**
      * Unisciti a un progetto
      */
-    public function join(Request $request, $projectId)
+    public function join(Request $request, Project $project)
     {
-        $user = Auth::user();
-        $project = Project::findOrFail($projectId);
+        // Laravel risolve automaticamente il model
+        // Niente più findOrFail necessario
         
-        // Verifica che il progetto sia attivo
         if (!$project->active) {
-            return back()->with('error', 'Questo progetto non è più attivo.');
+            return back()->with('error', 'Progetto non attivo.');
         }
         
-        // Verifica che l'utente non sia già nel progetto
-        if ($user->projects()->where('project_id', $projectId)->exists()) {
-            return back()->with('error', 'Sei già parte di questo progetto.');
-        }
-        
-        // Validazione ruolo (se fornito)
-        $validated = $request->validate([
-            'role' => 'nullable|string|max:255',
+        $user->projects()->attach($project->id, [
+            'role' => $validated['role'] ?? 'member',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
         
-        // Unisciti al progetto con ruolo di default 'member'
-        $user->projects()->attach($projectId, [
-            'role' => $validated['role'] ?? 'member'
-        ]);
-        
-        return back()->with('success', "Ti sei unito al progetto '{$project->name}' con successo!");
+        return back()->with('success', "Unito al progetto!");
     }
 
     /**

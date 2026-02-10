@@ -2,6 +2,7 @@
 @section('css')
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/main.min.css' rel='stylesheet' />
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/index.global.min.js'></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         .fc-day-selected {
             background-color: #d1ecf1 !important;
@@ -43,6 +44,7 @@
                             <span><span class="badge" style="background-color: #17a2b8;">SW</span> Smart Working</span>
                             <span><span class="badge" style="background-color: #dc3545;">Pe</span> Permesso</span>
                             <span><span class="badge" style="background-color: #f8d7da;">⚠️</span> Festività</span>
+                            <span><span class="badge" style="background-color: #6c757d;">🚫</span> Colleghi Assenti</span>
                         </div>
                     </div>
                 </div>
@@ -146,12 +148,67 @@
             </div>
         </div>
     </div>
+
+    <!-- Sezione Statistiche e Grafici -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-graph-up"></i> Statistiche Presenze
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Grafico Torta - Distribuzione Anno Corrente -->
+                        <div class="col-md-4">
+                            <h6 class="text-center mb-3">Distribuzione {{ now()->year }}</h6>
+                            <canvas id="pieChart" style="max-height: 250px;"></canvas>
+                        </div>
+                        
+                        <!-- Grafico Barre - Trend Ultimi 6 Mesi -->
+                        <div class="col-md-8">
+                            <h6 class="text-center mb-3">Trend Ultimi 6 Mesi</h6>
+                            <canvas id="trendChart" style="max-height: 250px;"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistiche Numeriche -->
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                <div class="row text-center">
+                                    <div class="col-3">
+                                        <h4 id="stat-ferie" class="mb-0">-</h4>
+                                        <small>🏖️ Ferie</small>
+                                    </div>
+                                    <div class="col-3">
+                                        <h4 id="stat-smart" class="mb-0">-</h4>
+                                        <small>💻 Smart Working</small>
+                                    </div>
+                                    <div class="col-3">
+                                        <h4 id="stat-permesso" class="mb-0">-</h4>
+                                        <small>⏰ Permessi</small>
+                                    </div>
+                                    <div class="col-3">
+                                        <h4 id="stat-presente" class="mb-0">-</h4>
+                                        <small>🏢 Presente</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section('js')
 <script>
 const savedPresences = @json($events);
 const holidayEvents = @json($holidays);
+const colleagueEvents = @json($colleagueEvents ?? []);
 
 document.addEventListener('DOMContentLoaded', function () {
     const startDateInput = document.getElementById('start-date');
@@ -167,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function () {
         selectMirror: true,        // ✅ Mostra preview durante il drag
         unselectAuto: false,       // ✅ Non deseleziona automaticamente
         
-        // Eventi salvati + festività
+        // Eventi salvati + festività + colleghi
         events: [
             ...savedPresences.map(p => ({
                 title: getShortTitle(p.status),
@@ -176,7 +233,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 borderColor: getColorByStatus(p.status),
                 allDay: true
             })),
-            ...holidayEvents
+            ...holidayEvents,
+            ...colleagueEvents
         ],
         
         // Gestione DRAG per selezionare range
@@ -452,6 +510,152 @@ document.addEventListener('DOMContentLoaded', function () {
             default: return status;
         }
     }
+
+    // ==========================================
+    // CARICAMENTO GRAFICI E STATISTICHE
+    // ==========================================
+    
+    let pieChart, trendChart;
+    
+    function loadCharts() {
+        fetch("{{ route('presences.stats') }}?year={{ now()->year }}&month={{ now()->month }}")
+            .then(response => response.json())
+            .then(data => {
+                updateStats(data);
+                createPieChart(data.percentages);
+                createTrendChart(data.trend);
+            })
+            .catch(error => {
+                console.error('Errore caricamento statistiche:', error);
+            });
+    }
+    
+    function updateStats(data) {
+        const yearStats = data.year_stats;
+        
+        document.getElementById('stat-ferie').textContent = yearStats.ferie || 0;
+        document.getElementById('stat-smart').textContent = yearStats.smart_working || 0;
+        document.getElementById('stat-permesso').textContent = yearStats.permesso || 0;
+        document.getElementById('stat-presente').textContent = yearStats.presente || 0;
+    }
+    
+    function createPieChart(percentages) {
+        const ctx = document.getElementById('pieChart').getContext('2d');
+        
+        if (pieChart) {
+            pieChart.destroy();
+        }
+        
+        pieChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Presente', 'Ferie', 'Smart Working', 'Permesso'],
+                datasets: [{
+                    data: [
+                        percentages.presente || 0,
+                        percentages.ferie || 0,
+                        percentages.smart_working || 0,
+                        percentages.permesso || 0
+                    ],
+                    backgroundColor: ['#28a745', '#ffc107', '#17a2b8', '#dc3545'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 10,
+                            font: { size: 11 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function createTrendChart(trend) {
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        
+        if (trendChart) {
+            trendChart.destroy();
+        }
+        
+        trendChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: trend.map(t => t.month),
+                datasets: [
+                    {
+                        label: 'Presente',
+                        data: trend.map(t => t.presente),
+                        backgroundColor: '#28a745',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Ferie',
+                        data: trend.map(t => t.ferie),
+                        backgroundColor: '#ffc107',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Smart Working',
+                        data: trend.map(t => t.smart_working),
+                        backgroundColor: '#17a2b8',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Permesso',
+                        data: trend.map(t => t.permesso),
+                        backgroundColor: '#dc3545',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    x: {
+                        stacked: false,
+                        grid: { display: false }
+                    },
+                    y: {
+                        stacked: false,
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 10,
+                            font: { size: 11 }
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            }
+        });
+    }
+    
+    // Carica grafici al load della pagina
+    loadCharts();
 });
 </script>
 @stop

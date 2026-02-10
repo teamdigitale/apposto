@@ -47,10 +47,121 @@ class PresenceController extends Controller
             }
         }
 
+        // Ottieni progetti dell'utente
+        $userProjects = $this->user->projects()->pluck('projects.id');
+        
+        // Ottieni colleghi negli stessi progetti
+        $colleagues = \App\Models\User::whereHas('projects', function($query) use ($userProjects) {
+            $query->whereIn('projects.id', $userProjects);
+        })
+        ->where('id', '!=', $this->user->id)
+        ->with(['presences' => function($query) {
+            $query->whereIn('status', ['ferie', 'permesso'])
+                  ->where('date', '>=', now()->subMonths(1)->format('Y-m-d'))
+                  ->where('date', '<=', now()->addMonths(3)->format('Y-m-d'));
+        }])
+        ->get();
+        
+        // Crea eventi per colleghi in ferie
+        $colleagueEvents = [];
+        foreach ($colleagues as $colleague) {
+            foreach ($colleague->presences as $presence) {
+                $colleagueEvents[] = [
+                    'title' => "🚫 {$colleague->name}",
+                    'start' => $presence->date,
+                    'backgroundColor' => '#6c757d',
+                    'borderColor' => '#495057',
+                    'textColor' => '#fff',
+                    'display' => 'list-item',
+                    'extendedProps' => [
+                        'type' => 'colleague',
+                        'userName' => $colleague->name,
+                        'status' => $presence->status,
+                    ]
+                ];
+            }
+        }
+
         return view('presences.index', [
             'presences' => $presences,
             'events' => $events,
-            'holidays' => $holidayEvents 
+            'holidays' => $holidayEvents,
+            'colleagueEvents' => $colleagueEvents,
+        ]);
+    }
+
+    /**
+     * API: Statistiche presenze utente
+     */
+    public function getStats(Request $request)
+    {
+        $year = $request->input('year', now()->year);
+        $month = $request->input('month', now()->month);
+        
+        $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+        
+        // Conta per tipo (mese corrente)
+        $stats = Presence::where('user_id', $this->user->id)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->get()
+            ->pluck('count', 'status')
+            ->toArray();
+        
+        // Calcola trend ultimi 6 mesi
+        $trend = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $monthDate = now()->subMonths($i);
+            $monthStart = $monthDate->copy()->startOfMonth();
+            $monthEnd = $monthDate->copy()->endOfMonth();
+            
+            $monthStats = Presence::where('user_id', $this->user->id)
+                ->whereBetween('date', [$monthStart, $monthEnd])
+                ->selectRaw('status, COUNT(*) as count')
+                ->groupBy('status')
+                ->get()
+                ->pluck('count', 'status')
+                ->toArray();
+            
+            $trend[] = [
+                'month' => $monthDate->format('M Y'),
+                'ferie' => $monthStats['ferie'] ?? 0,
+                'smart_working' => $monthStats['smart_working'] ?? 0,
+                'permesso' => $monthStats['permesso'] ?? 0,
+                'presente' => $monthStats['presente'] ?? 0,
+            ];
+        }
+        
+        // Calcola statistiche anno corrente
+        $yearStart = Carbon::create($year, 1, 1);
+        $yearEnd = Carbon::create($year, 12, 31);
+        
+        $yearStats = Presence::where('user_id', $this->user->id)
+            ->whereBetween('date', [$yearStart, $yearEnd])
+            ->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->get()
+            ->pluck('count', 'status')
+            ->toArray();
+        
+        $totalDays = array_sum($yearStats);
+        $percentages = [];
+        foreach ($yearStats as $status => $count) {
+            $percentages[$status] = $totalDays > 0 ? round(($count / $totalDays) * 100, 1) : 0;
+        }
+        
+        return response()->json([
+            'current_month' => $stats,
+            'trend' => $trend,
+            'year_stats' => $yearStats,
+            'percentages' => $percentages,
+            'ferie_info' => [
+                'totali' => $this->user->ferie_totali,
+                'usate' => $this->user->ferie_usate,
+                'disponibili' => $this->user->remaining_leave_days,
+            ]
         ]);
     }
 
