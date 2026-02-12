@@ -107,7 +107,6 @@
                                         <th>Email</th>
                                         <th>Ruolo</th>
                                         <th>Dal</th>
-                                        <th>Ferie Disponibili</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -127,11 +126,6 @@
                                                 </span>
                                             </td>
                                             <td>{{ $user->pivot->created_at->format('d/m/Y') }}</td>
-                                            <td>
-                                                <span class="badge bg-{{ $user->remaining_leave_days > 10 ? 'success' : ($user->remaining_leave_days > 5 ? 'warning' : 'danger') }}">
-                                                    {{ $user->remaining_leave_days }} giorni
-                                                </span>
-                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -158,12 +152,6 @@
                                     <div class="p-3 border rounded">
                                         <h4 class="mb-0">{{ $project->users->sum('ferie_usate') }}</h4>
                                         <small class="text-muted">Ferie Usate Team</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="p-3 border rounded">
-                                        <h4 class="mb-0">{{ $project->users->sum('remaining_leave_days') }}</h4>
-                                        <small class="text-muted">Ferie Disponibili Team</small>
                                     </div>
                                 </div>
                             </div>

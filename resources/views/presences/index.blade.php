@@ -244,12 +244,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const start = info.startStr;
             
             // FullCalendar include un giorno in più nell'end, lo correggiamo
-            // Lavoriamo direttamente con le stringhe per evitare problemi timezone
             const endParts = info.endStr.split('-');
             const endDate = new Date(
-                parseInt(endParts[0]),           // year
-                parseInt(endParts[1]) - 1,       // month (0-indexed)
-                parseInt(endParts[2]) - 1        // day - 1 per correggere
+                parseInt(endParts[0]),
+                parseInt(endParts[1]) - 1,
+                parseInt(endParts[2]) - 1
             );
             
             const year = endDate.getFullYear();
@@ -264,39 +263,6 @@ document.addEventListener('DOMContentLoaded', function () {
             // Trigger change per aggiornare il conteggio
             startDateInput.dispatchEvent(new Event('change'));
             endDateInput.dispatchEvent(new Event('change'));
-        },
-        
-        // Click su singola data (alternativa al drag)
-        dateClick: function(info) {
-            const clickedDate = info.dateStr;
-            
-            console.log('🖱️ CLICK Selection:', {
-                clicked: clickedDate,
-                currentStart: startDateInput.value,
-                currentEnd: endDateInput.value
-            });
-            
-            // Se start vuoto, popola start
-            if (!startDateInput.value) {
-                startDateInput.value = clickedDate;
-                endDateInput.value = ''; // Assicura che end sia vuoto
-                console.log('→ Set START:', clickedDate);
-                startDateInput.dispatchEvent(new Event('change'));
-            }
-            // Se start pieno ma end vuoto, popola end
-            else if (!endDateInput.value) {
-                // Se clicchi sulla stessa data di start, usa quella data per end
-                endDateInput.value = clickedDate;
-                console.log('→ Set END:', clickedDate);
-                endDateInput.dispatchEvent(new Event('change'));
-            }
-            // Se entrambi pieni, resetta e ricomincia
-            else {
-                startDateInput.value = clickedDate;
-                endDateInput.value = '';
-                console.log('→ RESET to START:', clickedDate);
-                startDateInput.dispatchEvent(new Event('change'));
-            }
         },
         
         // ✅ CLICK SU EVENTO ESISTENTE PER MODIFICARE/ELIMINARE
@@ -579,38 +545,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     function deletePresence(date, eventObj) {
-        // Disabilita interazioni temporaneamente
-        calendar.setOption('selectable', false);
-        
-        fetch("{{ route('presences.delete') }}", {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({ date: date })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Rimuovi evento dal calendario
-                eventObj.remove();
-                
-                showAlert('✅ Presenza eliminata con successo!', 'success');
-                
-                // Ricarica pagina dopo 1.5s per aggiornare contatori
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showAlert('❌ ' + (data.message || 'Errore durante l\'eliminazione'), 'danger');
-            }
-        })
-        .catch(error => {
-            console.error('Errore:', error);
-            showAlert('❌ Errore durante l\'eliminazione', 'danger');
-        })
-        .finally(() => {
-            calendar.setOption('selectable', true);
-        });
+        // Redirect diretto alla route di eliminazione
+        window.location.href = `/presences/${date}/delete`;
     }
 
     // ==========================================

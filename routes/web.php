@@ -54,7 +54,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/presences', [PresenceController::class, 'index'])->name('presences.index');
     Route::post('/presences', [PresenceController::class, 'store'])->name('presences.store');
-    Route::delete('/presences', [PresenceController::class, 'destroy'])->name('presences.delete');
+    Route::get('/presences/{date}/delete', [PresenceController::class, 'destroySimple'])->name('presences.delete');
     Route::get('/api/presences/stats', [PresenceController::class, 'getStats'])->name('presences.stats');
 
     Route::post('/booking/cancel/{id}', [BookingController::class, 'cancel'])->name('bookings.cancel');

@@ -210,8 +210,8 @@ class PresenceController extends Controller
                     ['status' => $validated['status']]
                 );
         
-                if ($validated['status'] === 'presente') {
-                    // Crea booking
+                if ($validated['status'] === 'presente' && $user->default_workstation_id) {
+                    // Crea booking solo se l'utente ha una postazione di default
                     Booking::updateOrCreate(
                         [
                             'user_id' => $user->id,
@@ -228,7 +228,7 @@ class PresenceController extends Controller
                         ]
                     );
                 } else {
-                    // Cancella booking
+                    // Cancella booking se esiste
                     Booking::where('user_id', $user->id)
                         ->where('start_date', $date)
                         ->update(['status' => 1]);
@@ -244,7 +244,27 @@ class PresenceController extends Controller
     }
 
     /**
-     * Elimina una presenza specifica
+     * Elimina una presenza specifica (GET semplice)
+     */
+    public function destroySimple($date)
+    {
+        $user = $this->user;
+        
+        $deleted = Presence::where('user_id', $user->id)
+            ->where('date', $date)
+            ->delete();
+        
+        if ($deleted) {
+            Booking::where('user_id', $user->id)
+                ->where('start_date', $date)
+                ->update(['status' => 1]);
+        }
+        
+        return redirect()->route('presences.index')->with('success', 'Presenza del ' . \Carbon\Carbon::parse($date)->format('d/m/Y') . ' eliminata!');
+    }
+
+    /**
+     * Elimina una presenza specifica (API DELETE)
      */
     public function destroy(Request $request)
     {

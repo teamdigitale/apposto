@@ -44,7 +44,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         app(Dispatcher::class)->listen(BuildingMenu::class, function (BuildingMenu $event) {
-            // Note: removed dynamic property assignment ($event->address) deprecated in PHP 8.2+
+            $event->address = '';
             if (!Auth::check()) {
                 $event->menu->header_menu = [];
             }
@@ -73,7 +73,7 @@ class AppServiceProvider extends ServiceProvider
                     ];
                 $event->menu->header_menu[] = [
                         "url" => '/absences/dashboard',
-                        "text" => 'Resonto Ferie',
+                        "text" => 'Resoconto Assenze',
                         "active" => 0,
                     ];
             }
