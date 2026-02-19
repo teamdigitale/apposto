@@ -116,7 +116,7 @@
                         </div>
 
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg" id="save-btn" disabled>
+                            <button type="submit" class="btn btn-primary" id="save-btn" disabled>
                                 <i class="bi bi-save"></i> Salva Periodo
                             </button>
                             <button type="button" class="btn btn-outline-secondary" id="clear-selection">
@@ -265,7 +265,6 @@ document.addEventListener('DOMContentLoaded', function () {
             endDateInput.dispatchEvent(new Event('change'));
         },
         
-        // ✅ CLICK SU EVENTO ESISTENTE PER MODIFICARE/ELIMINARE
         eventClick: function(info) {
             // Se è festività, mostra solo nome
             if (info.event.display === 'background') {
@@ -274,8 +273,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             
             // Se è un collega, mostra info senza permettere modifica
-            if (info.event.extendedProps.type === 'colleague') {
-                const userName = info.event.extendedProps.userName;
+            if (info.event.extendedProps && info.event.extendedProps.type === 'colleague') {
+                const userName = info.event.extendedProps.userName || 'Collega';
                 const status = info.event.extendedProps.status === 'ferie' ? 'Ferie' : 'Permesso';
                 const date = formatDate(info.event.startStr);
                 showAlert(`ℹ️ ${userName} - ${status} il ${date}`, 'info');
@@ -283,13 +282,72 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             
             const eventDate = info.event.startStr;
-            const eventStatus = info.event.extendedProps.status;
+            // ✅ FIX: Prendi lo status dall'extendedProps o dedurlo dal backgroundColor
+            let eventStatus = info.event.extendedProps?.status;
             
-            // Mostra modal di conferma per proprie presenze
-            if (confirm(`Presenza del ${formatDate(eventDate)}: ${getStatusLabel(eventStatus)}\n\nVuoi eliminare questa presenza?`)) {
+            // Fallback: dedurlo dal colore se non presente
+            if (!eventStatus) {
+                const bgColor = info.event.backgroundColor;
+                if (bgColor === '#ffc107') eventStatus = 'ferie';
+                else if (bgColor === '#17a2b8') eventStatus = 'smart_working';
+                else if (bgColor === '#dc3545') eventStatus = 'permesso';
+                else if (bgColor === '#28a745') eventStatus = 'presente';
+            }
+            
+            if (!eventStatus) {
+                showAlert('❌ Impossibile identificare il tipo di presenza', 'danger');
+                return;
+            }
+            
+            // ✅ FIX: Testo specifico in base al tipo
+            const messages = {
+                'ferie': `Ferie del ${formatDate(eventDate)}\n\nVuoi eliminare queste ferie?`,
+                'permesso': `Permesso del ${formatDate(eventDate)}\n\nVuoi eliminare questo permesso?`,
+                'smart_working': `Smart Working del ${formatDate(eventDate)}\n\nVuoi eliminare questo smart working?`,
+                'presente': `Presenza in ufficio del ${formatDate(eventDate)}\n\nVuoi eliminare questa presenza?`
+            };
+            
+            const message = messages[eventStatus] || `Presenza del ${formatDate(eventDate)}\n\nVuoi eliminare?`;
+            
+            if (confirm(message)) {
                 deletePresence(eventDate, info.event);
             }
-        }
+        },
+
+        // ✅ FIX: Ripristino dateClick per selezione progressiva date
+        dateClick: function(info) {
+            const clickedDate = info.dateStr;
+            
+            // Se start vuoto, popola start
+            if (!startDateInput.value) {
+                startDateInput.value = clickedDate;
+                endDateInput.value = clickedDate; // Imposta anche end uguale a start
+                startDateInput.dispatchEvent(new Event('change'));
+                endDateInput.dispatchEvent(new Event('change'));
+            }
+            // Se start pieno ma end vuoto O start == end, aggiorna end
+            else if (!endDateInput.value || startDateInput.value === endDateInput.value) {
+                // Se clicchi una data DOPO start, la usa come end
+                if (clickedDate >= startDateInput.value) {
+                    endDateInput.value = clickedDate;
+                    endDateInput.dispatchEvent(new Event('change'));
+                }
+                // Se clicchi una data PRIMA di start, scambia start e end
+                else {
+                    endDateInput.value = startDateInput.value;
+                    startDateInput.value = clickedDate;
+                    startDateInput.dispatchEvent(new Event('change'));
+                    endDateInput.dispatchEvent(new Event('change'));
+                }
+            }
+            // Se entrambi pieni e diversi, resetta e ricomincia
+            else {
+                startDateInput.value = clickedDate;
+                endDateInput.value = clickedDate;
+                startDateInput.dispatchEvent(new Event('change'));
+                endDateInput.dispatchEvent(new Event('change'));
+            }
+        },
     });
 
     calendar.render();
