@@ -33,8 +33,11 @@ jobs:
           arguments: --impure
       - name: Build
         id: build
+        env:
+          GITHUB_SHA: ${{ github.sha }}
         run: |
-          nix build .#containerImage
+          # --impure: GITHUB_SHA makes derivation unique per commit for correct cache invalidation
+          nix build --impure .#containerImage
           echo "NIX_STORE_PATH=$(readlink result)" >> "$GITHUB_OUTPUT"
       - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Copy to Podman

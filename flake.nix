@@ -18,13 +18,24 @@
         let
           pkgs = import nixpkgs { inherit system; };
           nix2containerPkgs = nix2container.packages.${system};
+          # Commit marker: makes derivation unique per commit in CI (GITHUB_SHA).
+          # Enables correct cache invalidation while keeping cache for deps (nixpkgs, php).
+          commitSha = builtins.getEnv "GITHUB_SHA";
+          commitMarker = pkgs.runCommand "commit-marker" { } ''
+            echo -n "${commitSha}" > $out
+          '';
+          appSrc = pkgs.runCommand "apposto-src" { } ''
+            cp -r ${./.} $out
+            chmod -R u+w $out
+            cp ${commitMarker} $out/.nix-commit
+          '';
         in
         {
           packages = {
             default = pkgs.php83.buildComposerProject (finalAttrs: {
               pname = "apposto";
               version = "1.0.0";
-              src = ./.;
+              src = appSrc;
               vendorHash = "sha256-FHfwLwSa2VGamxKRNmQ2UADmHA0ApzdX7L0fBV2eeXs=";
               postInstall = ''
                 cd $out/share/php/apposto
