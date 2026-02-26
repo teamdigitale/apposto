@@ -41,22 +41,24 @@ jobs:
           echo "NIX_STORE_PATH=$(readlink result)" >> "$GITHUB_OUTPUT"
       - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Copy to Podman
-        run: nix run .#containerImage.copyToPodman
+        id: copy
+        run: |
+          OUTPUT=$(nix run .#containerImage.copyToPodman 2>&1)
+          echo "$OUTPUT"
+          TAG=$(echo "$OUTPUT" | sed -n 's/.*apposto:\([a-z0-9]*\).*/\1/p' | head -1)
+          echo "PODMAN_TAG=$TAG" >> "$GITHUB_OUTPUT"
       - name: Tag
         id: tag
         run: |
-          TAG=${NIX_STORE_PATH#/nix/store/}
-          TAG=${TAG%%-*}
           IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
           IMAGE_ID=${IMAGE_ID,,}
           VERSION=${BRANCH_NAME##*/}
           [[ "${BRANCH_NAME:0:10}" == "refs/tags/" ]] && VERSION=${VERSION:1}
           IMAGE_ID=$IMAGE_ID:$VERSION
           echo "IMAGE_ID=$IMAGE_ID" >> "$GITHUB_OUTPUT"
-          podman tag "$IMAGE_NAME:$TAG" "$IMAGE_ID"
+          podman tag "$IMAGE_NAME:${{ steps.copy.outputs.PODMAN_TAG }}" "$IMAGE_ID"
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-          NIX_STORE_PATH: ${{ steps.build.outputs.NIX_STORE_PATH }}
       - name: Log in
         run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Push
