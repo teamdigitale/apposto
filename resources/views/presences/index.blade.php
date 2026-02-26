@@ -62,8 +62,8 @@
                 <div class="card-body">
                     <div class="alert alert-info">
                         <i class="bi bi-lightbulb"></i> <strong>Come selezionare:</strong><br>
-                        <strong>Opzione 1:</strong> Trascina col mouse sul calendario (drag)<br>
-                        <strong>Opzione 2:</strong> Compila manualmente i campi data sotto<br>
+                        <strong>Opzione 1: </strong>Trascina col mouse sul calendario (drag)<br>
+                        <strong>Opzione 2: </strong>Compila manualmente i campi data sotto<br>
                         <hr class="my-2">
                         <i class="bi bi-pencil"></i> <strong>Per modificare/eliminare:</strong> Clicca su una presenza già salvata (badge P, F, SW, Pe)
                     </div>
