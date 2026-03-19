@@ -161,7 +161,7 @@
             </div>
         </div>
     </div>
-<?php print_r($project);?>
+
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">
