@@ -64,6 +64,13 @@ class AppServiceProvider extends ServiceProvider
                         "text" => 'Resoconto',
                         "active" => 0,
                     ];
+
+                    $event->menu->header_menu[] = [
+                        "url" => '/project-requests',
+                        "text" => 'Richieste Progetti',
+                        "active" => 0,
+                        "icon" => 'bi-inbox', // Badge con count opzionale
+                    ];
                 }
 
                 $event->menu->header_menu[] = [
@@ -76,6 +83,7 @@ class AppServiceProvider extends ServiceProvider
                         "text" => 'Resoconto Assenze',
                         "active" => 0,
                     ];
+                
             }
         });
 

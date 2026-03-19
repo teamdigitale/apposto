@@ -32,6 +32,20 @@ class ProjectResource extends Resource
                     ->label('Descrizione')
                     ->rows(3)
                     ->maxLength(1000),
+
+                Forms\Components\TextInput::make('slack_channel')
+                    ->label('Link Canale Teams'),
+                
+                Forms\Components\TextInput::make('drive_folder')
+                    ->label('Link Cartella condivisa'),
+                
+                 Forms\Components\TextInput::make('documentation_url')
+                    ->label('Link Documentazione'),
+                
+                Forms\Components\Textarea::make('resources_notes')
+                    ->label('Ulteriori Note sulle Risorse')
+                    ->rows(3)
+                    ->maxLength(1000),
                 
                 Forms\Components\DatePicker::make('start_date')
                     ->label('Data Inizio'),

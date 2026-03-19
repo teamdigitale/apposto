@@ -13,7 +13,11 @@ class Project extends Model
         'description',
         'start_date',
         'end_date',
-        'active'
+        'active',
+        'slack_channel',
+        'drive_folder',
+        'documentation_url',
+        'resources_notes'
     ];
 
     protected $casts = [

@@ -200,4 +200,23 @@ class ProjectMembershipController extends Controller
         
         return view('projects.show', compact('project', 'isMember'));
     }
+
+    public function updateResources(Request $request, Project $project)
+    {
+        // Verifica che l'utente sia nel progetto
+        if (!auth()->user()->projects()->where('project_id', $project->id)->exists()) {
+            return back()->with('error', 'Non fai parte di questo progetto.');
+        }
+        
+        $validated = $request->validate([
+            'slack_channel' => 'nullable|string|max:255',
+            'drive_folder' => 'nullable|url',
+            'documentation_url' => 'nullable|url',
+            'resources_notes' => 'nullable|string',
+        ]);
+        
+        $project->update($validated);
+        
+        return back()->with('success', 'Risorse progetto aggiornate!');
+    }
 }

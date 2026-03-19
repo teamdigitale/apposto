@@ -18,9 +18,10 @@ class AbsenceDashboardController extends Controller
     {
         $user = auth()->user();
         
-        // Date di default: prossimi 30 giorni
-        $startDate = $request->input('start_date', now()->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->addDays(30)->format('Y-m-d'));
+        $projectFilter = $request->input('project_id', null);
+        
+        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
+        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
         
         // Validazione date
         $validated = validator([
@@ -43,11 +44,22 @@ class AbsenceDashboardController extends Controller
             }
         }
         
-        // ✅ CORRETTO: Ottieni solo i progetti dell'utente loggato
-        $projects = $user->projects()
+        $projectsQuery = $user->projects()
             ->where('active', true)
             ->withCount('users')
-            ->with('users')
+            ->with('users');
+
+        // ✅ Se c'è filtro progetto, prendi solo quello
+        if ($projectFilter) {
+            $projectsQuery->where('projects.id', $projectFilter);
+        }
+
+        $projects = $projectsQuery->get();
+
+        // ✅ Lista completa per dropdown (non filtrata)
+        $allUserProjects = $user->projects()
+            ->where('active', true)
+            ->orderBy('name')
             ->get();
         
         // Statistiche globali
@@ -182,9 +194,17 @@ class AbsenceDashboardController extends Controller
             $globalStats['most_affected_project'] = $projectAbsences[0] ?? null;
             $globalStats['least_affected_project'] = end($projectAbsences) ?: null;
         }
-        
-        return view('absences.dashboard', compact('projectAbsences', 'startDate', 'endDate', 'globalStats', 'totalWorkDays'));
-    }
+      
+            return view('absences.dashboard', compact(
+                'projectAbsences',
+                'startDate', 
+                'endDate', 
+                'globalStats', 
+                'totalWorkDays',
+                'allUserProjects',
+                'projectFilter'
+            ));        
+        }
 
     /**
      * API endpoint per ottenere assenze di un progetto specifico (JSON)

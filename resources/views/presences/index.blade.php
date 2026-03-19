@@ -33,18 +33,44 @@
                         <i class="bi bi-calendar3"></i> Calendario Presenze
                     </h5>
                 </div>
+
+                <div class="card mb-3">
+                    <div class="card-body py-2">
+                        <form method="GET" action="{{ route('presences.index') }}" class="row g-2 align-items-center">
+                            <div class="col-md-4">
+                                <label class="form-label mb-1 small">
+                                    <i class="bi bi-briefcase"></i> Filtra per progetto
+                                </label>
+                                <select name="project_filter" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    <option value="">Tutti i progetti</option>
+                                    @foreach(auth()->user()->projects()->where('active', true)->orderBy('name')->get() as $proj)
+                                        <option value="{{ $proj->id }}" {{ request('project_filter') == $proj->id ? 'selected' : '' }}>
+                                            {{ $proj->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @if(request('project_filter'))
+                            <div class="col-md-8">
+                                <span class="badge bg-info">
+                                    <i class="bi bi-funnel-fill"></i> Filtro attivo
+                                </span>
+                                <a href="{{ route('presences.index') }}" class="btn btn-sm btn-outline-secondary ms-2">
+                                    <i class="bi bi-x-circle"></i> Rimuovi
+                                </a>
+                            </div>
+                            @endif
+                        </form>
+                    </div>
+                </div>
                 <div class="card-body">
                     <div id="calendar"></div>
                     
                     <div class="mt-3 p-3 bg-light border rounded">
                         <h6 class="mb-2"><i class="bi bi-info-circle"></i> Legenda</h6>
                         <div class="d-flex flex-wrap gap-3">
-                            <span><span class="badge" style="background-color: #28a745;">P</span> Presente</span>
-                            <span><span class="badge" style="background-color: #ffc107;">F</span> Ferie</span>
-                            <span><span class="badge" style="background-color: #17a2b8;">SW</span> Smart Working</span>
-                            <span><span class="badge" style="background-color: #dc3545;">Pe</span> Permesso</span>
-                            <span><span class="badge" style="background-color: #f8d7da;">⚠️</span> Festività</span>
-                            <span><span class="badge" style="background-color: #6c757d;">🚫</span> Colleghi Assenti</span>
+                            <span class="badge" style="background: #28a745; color: white;">🏢 Presente in Ufficio</span>
+                            <span class="badge" style="background: #17a2b8; color: white;margin-left: 0.5rem;">💻 Smart Working</span>
                         </div>
                     </div>
                 </div>
@@ -108,9 +134,7 @@
                             </label>
                             <select id="status" name="status" class="form-select form-select-lg">
                                 <option value="presente">🏢 Presente in Ufficio</option>
-                                <option value="ferie">🏖️ Ferie</option>
                                 <option value="smart_working">💻 Smart Working</option>
-                                <option value="permesso">⏰ Permesso</option>
                             </select>
                         </div>
 
@@ -156,8 +180,11 @@
             <div class="card">
                 <div class="card-header bg-success text-white">
                     <h5 class="mb-0">
-                        <i class="bi bi-graph-up"></i> Statistiche Presenze
+                        <i class="bi bi-person-circle"></i> Statistiche Anno {{ now()->year }}
                     </h5>
+                    <p class="small mb-3 text-white">
+                    <strong>Dati personali</strong> - visualizzi solo le tue presenze/assenze
+                    </p>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -178,22 +205,38 @@
                     <div class="row mt-4">
                         <div class="col-md-12">
                             <div class="alert alert-info">
-                                <div class="row text-center">
-                                    <div class="col-3">
+                                <div class="row text-center mb-3">
+                                    <div class="col-6 col-md-2">
                                         <h4 id="stat-ferie" class="mb-0">-</h4>
-                                        <small>🏖️ Ferie</small>
+                                        <small class="text-muted">🏖️ Ferie</small>
                                     </div>
-                                    <div class="col-3">
+                                    <div class="col-6 col-md-2">
                                         <h4 id="stat-smart" class="mb-0">-</h4>
-                                        <small>💻 Smart Working</small>
+                                        <small class="text-muted">💻 Smart</small>
                                     </div>
-                                    <div class="col-3">
+                                    <div class="col-6 col-md-2">
                                         <h4 id="stat-permesso" class="mb-0">-</h4>
-                                        <small>⏰ Permessi</small>
+                                        <small class="text-muted">⏰ Permessi</small>
                                     </div>
-                                    <div class="col-3">
+                                    <div class="col-6 col-md-2">
                                         <h4 id="stat-presente" class="mb-0">-</h4>
-                                        <small>🏢 Presente</small>
+                                        <small class="text-muted">🏢 Presenze</small>
+                                    </div>
+                                    
+                                    <!-- ✅ NUOVI BOX AGGREGATI -->
+                                    <div class="col-6 col-md-2">
+                                        <div class="border-start border-success border-3 ps-2">
+                                            <h4 id="stat-work-days" class="mb-0 text-success">-</h4>
+                                            <small class="text-muted">📊 Gg Lavorativi</small>
+                                            <small class="d-block" style="font-size: 0.65rem;">(Pres+Smart)</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <div class="border-start border-warning border-3 ps-2">
+                                            <h4 id="stat-absence-days" class="mb-0 text-warning">-</h4>
+                                            <small class="text-muted">📉 Gg Assenza</small>
+                                            <small class="d-block" style="font-size: 0.65rem;">(Fer+Perm)</small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -627,11 +670,16 @@ document.addEventListener('DOMContentLoaded', function () {
     
     function updateStats(data) {
         const yearStats = data.year_stats;
+        const aggregated = data.aggregated;
         
         document.getElementById('stat-ferie').textContent = yearStats.ferie || 0;
         document.getElementById('stat-smart').textContent = yearStats.smart_working || 0;
         document.getElementById('stat-permesso').textContent = yearStats.permesso || 0;
         document.getElementById('stat-presente').textContent = yearStats.presente || 0;
+        
+        // ✅ NUOVO: Statistiche aggregate
+        document.getElementById('stat-work-days').textContent = aggregated.work_days || 0;
+        document.getElementById('stat-absence-days').textContent = aggregated.absence_days || 0;
     }
     
     function createPieChart(percentages) {

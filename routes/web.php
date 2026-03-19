@@ -9,6 +9,7 @@ use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\ProjectMembershipController;
 use App\Http\Controllers\AbsenceDashboardController;
+use App\Http\Controllers\ProjectRequestController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -62,6 +63,21 @@ Route::middleware('auth')->group(function () {
     Route::post('/check-workstation-availability', [ BookingController::class, 'checkWorkstationAvailability'])->name('booking.checkWorkstationAvailability');
     Route::post('/check-desk-availability', [BookingController::class, 'checkAvailability'])->name('desk.checkAvailability');
     Route::get('/booking/check-desk', function () { return view('booking.check-desk');   })->name('desk.check');
+
+    Route::patch('/projects/{project}/resources', [ProjectMembershipController::class, 'updateResources'])->name('projects.updateResources');
+
+    // Richieste progetti
+    Route::post('/projects/{project}/request-join', [ProjectRequestController::class, 'requestJoin'])
+        ->name('projects.requestJoin');
+    Route::post('/projects/{project}/request-leave', [ProjectRequestController::class, 'requestLeave'])
+        ->name('projects.requestLeave');
+
+    Route::get('/project-requests', [ProjectRequestController::class, 'index'])
+        ->name('projectRequests.index');
+    Route::post('/project-requests/{projectRequest}/approve', [ProjectRequestController::class, 'approve'])
+        ->name('projectRequests.approve');
+    Route::post('/project-requests/{projectRequest}/reject', [ProjectRequestController::class, 'reject'])
+        ->name('projectRequests.reject');
 
     Route::get('/projects', [ProjectMembershipController::class, 'index'])->name('projects.index');
     Route::get('/projects/{project}', [ProjectMembershipController::class, 'show'])->name('projects.show');

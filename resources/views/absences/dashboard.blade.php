@@ -48,30 +48,52 @@
             <div class="card">
                 <div class="card-body">
                     <form method="GET" action="{{ route('absences.dashboard') }}" class="row g-3 align-items-end">
-                        <div class="col-md-4">
-                            <label for="start_date" class="form-label">Data Inizio</label>
-                            <input type="date" 
-                                   name="start_date" 
-                                   id="start_date" 
-                                   class="form-control" 
-                                   value="{{ $startDate->format('Y-m-d') }}"
-                                   required>
+                        <!-- ✅ NUOVO: Filtro Progetto -->
+                        <div class="col-md-3">
+                            <label class="form-label">
+                                <i class="bi bi-briefcase"></i> Progetto
+                            </label>
+                            <select name="project_id" class="form-select">
+                                <option value="">Tutti i miei progetti</option>
+                                @foreach($allUserProjects as $proj)
+                                    <option value="{{ $proj->id }}" {{ $projectFilter == $proj->id ? 'selected' : '' }}>
+                                        {{ $proj->name }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
-                        <div class="col-md-4">
-                            <label for="end_date" class="form-label">Data Fine</label>
-                            <input type="date" 
-                                   name="end_date" 
-                                   id="end_date" 
-                                   class="form-control" 
-                                   value="{{ $endDate->format('Y-m-d') }}"
-                                   required>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label">Data Inizio</label>
+                            <input type="date" name="start_date" class="form-control"
+                                value="{{ $startDate->format('Y-m-d') }}" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <label class="form-label">Data Fine</label>
+                            <input type="date" name="end_date" class="form-control"
+                                value="{{ $endDate->format('Y-m-d') }}" required>
+                        </div>
+                        <div class="col-md-3">
                             <button type="submit" class="btn btn-primary w-100">
                                 <i class="bi bi-search"></i> Aggiorna
                             </button>
                         </div>
                     </form>
+
+                    <!-- ✅ Badge filtro attivo -->
+                    @if($projectFilter)
+                    <div class="alert alert-info d-flex justify-content-between align-items-center mt-2 py-2 mb-0">
+                        <span>
+                            <i class="bi bi-funnel-fill"></i>
+                            <strong>Filtro attivo:</strong> 
+                            {{ $allUserProjects->firstWhere('id', $projectFilter)->name ?? 'Progetto' }}
+                        </span>
+                        <a href="{{ route('absences.dashboard', ['start_date' => $startDate->format('Y-m-d'), 'end_date' => $endDate->format('Y-m-d')]) }}" 
+                        class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Rimuovi
+                        </a>
+                    </div>
+                    @endif
                     
                     <div class="mt-3">
                         <small class="text-muted">

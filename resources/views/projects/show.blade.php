@@ -161,6 +161,115 @@
             </div>
         </div>
     </div>
+<?php print_r($project);?>
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-folder-symlink"></i> Risorse Progetto
+            </h5>
+        </div>
+        <div class="card-body">
+            
+            @if($project->slack_channel || $project->drive_folder || $project->documentation_url || $project->resources_notes)
+                <div class="row mb-3">
+                    @if($project->slack_channel)
+                    <div class="col-md-6 mb-2">
+                        <strong><i class="bi bi-slack text-primary"></i> Canale Teams:</strong><br>
+                        <a href="{{ $project->slack_channel }}" 
+                        target="_blank" class="text-decoration-none">
+                            #{{ $project->slack_channel }}
+                            <i class="bi bi-box-arrow-up-right small"></i>
+                        </a>
+                    </div>
+                    @endif
+                    
+                    @if($project->drive_folder)
+                    <div class="col-md-6 mb-2">
+                        <strong><i class="bi bi-google text-warning"></i> Cartella Progetto:</strong><br>
+                        <a href="{{ $project->drive_folder }}" target="_blank" class="text-decoration-none">
+                            Apri cartella
+                            <i class="bi bi-box-arrow-up-right small"></i>
+                        </a>
+                    </div>
+                    @endif
+                    
+                    @if($project->documentation_url)
+                    <div class="col-md-12 mb-2">
+                        <strong><i class="bi bi-file-earmark-text text-info"></i> Documentazione:</strong><br>
+                        <a href="{{ $project->documentation_url }}" target="_blank" class="text-decoration-none">
+                            {{ $project->documentation_url }}
+                            <i class="bi bi-box-arrow-up-right small"></i>
+                        </a>
+                    </div>
+                    @endif
+                    
+                    @if($project->resources_notes)
+                    <div class="col-md-12">
+                        <strong><i class="bi bi-sticky"></i> Note:</strong><br>
+                        <p class="mb-0 text-muted">{{ $project->resources_notes }}</p>
+                    </div>
+                    @endif
+                </div>                
+            @endif
+            
+            <!-- Form di modifica (collapsabile) -->
+            <div class="collapse mt-3" id="resourcesForm">
+                <hr>
+                <form method="POST" action="{{ route('projects.updateResources', $project->id) }}">
+                    @csrf
+                    @method('PATCH')
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-slack"></i> Canale Slack
+                            </label>
+                            <input type="text" name="slack_channel" class="form-control" 
+                                value="{{ old('slack_channel', $project->slack_channel) }}"
+                                placeholder="es: team-progetto">
+                            <small class="text-muted">Solo il nome del canale (senza #)</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-google"></i> Cartella Google Drive
+                            </label>
+                            <input type="url" name="drive_folder" class="form-control" 
+                                value="{{ old('drive_folder', $project->drive_folder) }}"
+                                placeholder="https://drive.google.com/drive/folders/...">
+                        </div>
+                        
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-file-earmark-text"></i> Link Documentazione
+                            </label>
+                            <input type="url" name="documentation_url" class="form-control" 
+                                value="{{ old('documentation_url', $project->documentation_url) }}"
+                                placeholder="https://...">
+                            <small class="text-muted">Notion, Confluence, Wiki, ecc.</small>
+                        </div>
+                        
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-sticky"></i> Note / Altre Risorse
+                            </label>
+                            <textarea name="resources_notes" class="form-control" rows="3" 
+                                    placeholder="Altre informazioni utili, link, credenziali, ecc.">{{ old('resources_notes', $project->resources_notes) }}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Salva Risorse
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#resourcesForm">
+                            Annulla
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Azioni -->
     <div class="row mt-4">

@@ -21,15 +21,62 @@ class PresenceController extends Controller
         $this->timezone = config('app.timezone', 'Europe/Rome');
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $presences = $this->user->presences;
+        $projectFilter = $request->input('project_filter');
+        
+        $presencesQuery = $this->user->presences();
+        
+        $presences = $presencesQuery->get();
 
-        $events = $presences->map(fn($presence) => [
-            'title' => ucfirst(str_replace('_', ' ', $presence->status)),
-            'start' => $presence->date,
-            'status' => $presence->status,
-        ]);
+        $events = $presences->map(function($presence) {
+            // Determina icona e colori in base allo status
+            switch($presence->status) {
+                case 'ferie':
+                    $icon = '🏖️';
+                    $title = 'F';
+                    $bgColor = '#ffc107';
+                    $borderColor = '#e0a800';
+                    break;
+                case 'permesso':
+                    $icon = '⏰';
+                    $title = 'Pe';
+                    $bgColor = '#dc3545';
+                    $borderColor = '#bd2130';
+                    break;
+                case 'smart_working':
+                    $icon = '💻';
+                    $title = 'SW';
+                    $bgColor = '#17a2b8';
+                    $borderColor = '#138496';
+                    break;
+                case 'presente':
+                    $icon = '🏢';
+                    $title = 'P';
+                    $bgColor = '#28a745';
+                    $borderColor = '#1e7e34';
+                    break;
+                default:
+                    $icon = '';
+                    $title = ucfirst($presence->status);
+                    $bgColor = '#6c757d';
+                    $borderColor = '#5a6268';
+            }
+
+            return [
+                'title' => $title, // Abbreviazione per il calendario
+                'start' => $presence->date,
+                'status' => $presence->status,
+                'backgroundColor' => $bgColor,
+                'borderColor' => $borderColor,
+                'textColor' => '#fff',
+                'extendedProps' => [
+                    'type' => 'own',
+                    'status' => $presence->status,
+                    'icon' => $icon
+                ]
+            ];
+        });
 
         $yearsToLoad = [now()->year - 1, now()->year, now()->year + 1];
         $holidayEvents = [];
@@ -62,21 +109,44 @@ class PresenceController extends Controller
         }])
         ->get();
         
-        // Crea eventi per colleghi in ferie
+        // Crea eventi per colleghi in ferie/permessi
         $colleagueEvents = [];
         foreach ($colleagues as $colleague) {
             foreach ($colleague->presences as $presence) {
+                // ✅ CORRETTO: Usa switch o if-elseif completo
+                if ($presence->status === 'ferie') {
+                    $icon = '🏖️';
+                    $bgColor = '#ffc107';
+                    $borderColor = '#e0a800';
+                } elseif ($presence->status === 'permesso') {
+                    $icon = '⏰';
+                    $bgColor = '#dc3545';
+                    $borderColor = '#bd2130';
+                } elseif ($presence->status === 'smart_working') {
+                    $icon = '💻';
+                    $bgColor = '#17a2b8';
+                    $borderColor = '#138496';
+                } elseif ($presence->status === 'presente') {
+                    $icon = '👤';
+                    $bgColor = '#28a745';
+                    $borderColor = '#1e7e34';
+                } else {
+                    $icon = '❓';
+                    $bgColor = '#6c757d';
+                    $borderColor = '#5a6268';
+                }
+
                 $colleagueEvents[] = [
-                    'title' => "🚫 {$colleague->name}",
+                    'title' => $icon . ' ' . $colleague->name,
                     'start' => $presence->date,
-                    'backgroundColor' => '#6c757d',
-                    'borderColor' => '#495057',
+                    'backgroundColor' => $bgColor,
+                    'borderColor' => $borderColor,
                     'textColor' => '#fff',
-                    'display' => 'list-item',
+                    'display' => 'block',
                     'extendedProps' => [
                         'type' => 'colleague',
                         'userName' => $colleague->name,
-                        'status' => $presence->status,
+                        'status' => $presence->status
                     ]
                 ];
             }
@@ -152,11 +222,26 @@ class PresenceController extends Controller
             $percentages[$status] = $totalDays > 0 ? round(($count / $totalDays) * 100, 1) : 0;
         }
         
+        // ✅ Calcola giorni lavorativi aggregati (presente + smart_working)
+        $workDays = ($yearStats['presente'] ?? 0) + ($yearStats['smart_working'] ?? 0);
+        $absenceDays = ($yearStats['ferie'] ?? 0) + ($yearStats['permesso'] ?? 0);
+
+        $totalDays = array_sum($yearStats);
+        $workDaysPercentage = $totalDays > 0 ? round(($workDays / $totalDays) * 100, 1) : 0;
+        $absenceDaysPercentage = $totalDays > 0 ? round(($absenceDays / $totalDays) * 100, 1) : 0;
+
         return response()->json([
             'current_month' => $stats,
             'trend' => $trend,
             'year_stats' => $yearStats,
             'percentages' => $percentages,
+            // ✅ NUOVO: Dati aggregati
+            'aggregated' => [
+                'work_days' => $workDays,
+                'absence_days' => $absenceDays,
+                'work_percentage' => $workDaysPercentage,
+                'absence_percentage' => $absenceDaysPercentage,
+            ],
             'ferie_info' => [
                 'totali' => $this->user->ferie_totali,
                 'usate' => $this->user->ferie_usate,
