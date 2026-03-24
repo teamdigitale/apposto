@@ -103,9 +103,8 @@ class PresenceController extends Controller
         })
         ->where('id', '!=', $this->user->id)
         ->with(['presences' => function($query) {
-            $query->whereIn('status', ['ferie', 'permesso'])
-                ->where('date', '>=', now()->startOfYear()->format('Y-m-d'))
-                ->where('date', '<=', now()->addYear()->endOfYear()->format('Y-m-d'));
+                $query->where('date', '>=', now()->startOfYear()->format('Y-m-d'))
+                    ->where('date', '<=', now()->addYear()->endOfYear()->format('Y-m-d'));
         }])
         ->get();
         

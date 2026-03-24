@@ -53,7 +53,7 @@
                                     @foreach($myProjects as $project)
                                         <div class="list-group-item d-flex justify-content-between align-items-center">
                                             <div>
-                                                <h6 class="mb-1">{{ $project->name }}</h6>
+                                                <h6 class="mb-1 text-danger">{{ $project->name }}</h6>
                                                 <small class="text-muted">
                                                     {{ $project->users_count ?? $project->users->count() }} membri · 
                                                     Member dal {{ $project->pivot->created_at?->format('d/m/Y') ?? 'N/A' }}
@@ -98,7 +98,7 @@
                         @foreach($availableProjects as $project)
                             <div class="list-group-item d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="mb-1">{{ $project->name }}</h6>
+                                    <h6 class="mb-1 text-danger">{{ $project->name }}</h6>
                                     <small class="text-muted">
                                         {{ $project->description ?? 'Nessuna descrizione' }}
                                     </small>
