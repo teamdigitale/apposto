@@ -201,7 +201,7 @@ return [
                 'url' => 'contatti',
                 'text' => 'Contatti',
                 'target' => '_blank',
-            ],
+            ]
         ],
         'header' => [
            

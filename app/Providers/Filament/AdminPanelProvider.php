@@ -28,6 +28,9 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->brandName('APPosto')
+            ->brandLogo(asset('images/logo.png'))
+            ->brandLogoHeight('5rem')
             ->colors([
                 'primary' => "#06c",
             ])
