@@ -134,6 +134,7 @@
                                 <i class="bi bi-list-check"></i> Tipo Presenza
                             </label>
                             <select id="status" name="status" class="form-select form-select-lg">
+                                <option value="ferie">🏖️ Ferie</option>
                                 <option value="presente">🏢 Presente in Ufficio</option>
                                 <option value="smart_working">💻 Smart Working</option>
                             </select>
