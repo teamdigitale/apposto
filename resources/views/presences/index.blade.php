@@ -69,6 +69,7 @@
                     <div class="mt-3 p-3 bg-light border rounded">
                         <h6 class="mb-2"><i class="bi bi-info-circle"></i> Legenda</h6>
                         <div class="d-flex flex-wrap gap-3">
+                            <span class="badge" style="background: #dc3545; color: white;">⏰ Assenza</span>
                             <span class="badge" style="background: #28a745; color: white;">🏢 Presente in Ufficio</span>
                             <span class="badge" style="background: #17a2b8; color: white;margin-left: 0.5rem;">💻 Smart Working</span>
                         </div>
@@ -229,13 +230,6 @@
                                             <h4 id="stat-work-days" class="mb-0 text-success">-</h4>
                                             <small class="text-muted">📊 Gg Lavorativi</small>
                                             <small class="d-block" style="font-size: 0.65rem;">(Pres+Smart)</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 col-md-2">
-                                        <div class="border-start border-warning border-3 ps-2">
-                                            <h4 id="stat-absence-days" class="mb-0 text-warning">-</h4>
-                                            <small class="text-muted">📉 Gg Assenza</small>
-                                            <small class="d-block" style="font-size: 0.65rem;">(Fer+Perm)</small>
                                         </div>
                                     </div>
                                 </div>
