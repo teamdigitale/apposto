@@ -33,16 +33,11 @@ class PresenceController extends Controller
             // Determina icona e colori in base allo status
             switch($presence->status) {
                 case 'ferie':
-                    $icon = '🏖️';
-                    $title = 'F';
+                case 'permesso':
+                    $icon = '🚫';
+                    $title = 'A';
                     $bgColor = '#ffc107';
                     $borderColor = '#e0a800';
-                    break;
-                case 'permesso':
-                    $icon = '⏰';
-                    $title = 'Pe';
-                    $bgColor = '#dc3545';
-                    $borderColor = '#bd2130';
                     break;
                 case 'smart_working':
                     $icon = '💻';
@@ -113,14 +108,10 @@ class PresenceController extends Controller
         foreach ($colleagues as $colleague) {
             foreach ($colleague->presences as $presence) {
                 // ✅ CORRETTO: Usa switch o if-elseif completo
-                if ($presence->status === 'ferie') {
-                    $icon = '🏖️';
-                    $bgColor = '#ffc107';
+                if ($presence->status === 'ferie' || $presence->status === 'permesso') {
+                    $icon = '🚫';
+                    $bgColor = '#ffc107'; 
                     $borderColor = '#e0a800';
-                } elseif ($presence->status === 'permesso') {
-                    $icon = '⏰';
-                    $bgColor = '#dc3545';
-                    $borderColor = '#bd2130';
                 } elseif ($presence->status === 'smart_working') {
                     $icon = '💻';
                     $bgColor = '#17a2b8';
@@ -255,7 +246,7 @@ class PresenceController extends Controller
         $validated = $request->validate([
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'status' => 'required|in:presente,ferie,smart_working,permesso',
+            'status' => 'required|in:presente,ferie,smart_working',
         ]);
     
         $user = $this->user;

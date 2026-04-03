@@ -69,7 +69,7 @@
                     <div class="mt-3 p-3 bg-light border rounded">
                         <h6 class="mb-2"><i class="bi bi-info-circle"></i> Legenda</h6>
                         <div class="d-flex flex-wrap gap-3">
-                            <span class="badge" style="background: #dc3545; color: white;">⏰ Assenza</span>
+                            <span class="badge" style="background: #ffc107; color: #000;">🚫 Assenze</span>
                             <span class="badge" style="background: #28a745; color: white;">🏢 Presente in Ufficio</span>
                             <span class="badge" style="background: #17a2b8; color: white;margin-left: 0.5rem;">💻 Smart Working</span>
                         </div>
@@ -134,7 +134,7 @@
                                 <i class="bi bi-list-check"></i> Tipo Presenza
                             </label>
                             <select id="status" name="status" class="form-select form-select-lg">
-                                <option value="ferie">🏖️ Ferie</option>
+                                <option value="ferie">🚫 Assenza</option>
                                 <option value="presente">🏢 Presente in Ufficio</option>
                                 <option value="smart_working">💻 Smart Working</option>
                             </select>
@@ -208,29 +208,22 @@
                         <div class="col-md-12">
                             <div class="alert alert-info">
                                 <div class="row text-center mb-3">
-                                    <div class="col-6 col-md-2">
-                                        <h4 id="stat-ferie" class="mb-0">-</h4>
-                                        <small class="text-muted">🏖️ Ferie</small>
+                                    <div class="col-4 col-md-3">
+                                        <h4 id="stat-assenze" class="mb-0 text-warning">-</h4>
+                                        <small class="text-muted">🚫 Assenze</small>
                                     </div>
-                                    <div class="col-6 col-md-2">
+                                    <div class="col-4 col-md-3">
                                         <h4 id="stat-smart" class="mb-0">-</h4>
                                         <small class="text-muted">💻 Smart</small>
                                     </div>
-                                    <div class="col-6 col-md-2">
-                                        <h4 id="stat-permesso" class="mb-0">-</h4>
-                                        <small class="text-muted">⏰ Permessi</small>
-                                    </div>
-                                    <div class="col-6 col-md-2">
+                                    <div class="col-4 col-md-3">
                                         <h4 id="stat-presente" class="mb-0">-</h4>
                                         <small class="text-muted">🏢 Presenze</small>
                                     </div>
-                                    
-                                    <!-- ✅ NUOVI BOX AGGREGATI -->
-                                    <div class="col-6 col-md-2">
+                                    <div class="col-4 col-md-3">
                                         <div class="border-start border-success border-3 ps-2">
                                             <h4 id="stat-work-days" class="mb-0 text-success">-</h4>
                                             <small class="text-muted">📊 Gg Lavorativi</small>
-                                            <small class="d-block" style="font-size: 0.65rem;">(Pres+Smart)</small>
                                         </div>
                                     </div>
                                 </div>
@@ -338,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // ✅ FIX: Testo specifico in base al tipo
             const messages = {
-                'ferie': `Ferie del ${formatDate(eventDate)}\n\nVuoi eliminare queste ferie?`,
+                'ferie': `Ferie del ${formatDate(eventDate)}\n\nVuoi eliminare questa assenza?`,
                 'permesso': `Permesso del ${formatDate(eventDate)}\n\nVuoi eliminare questo permesso?`,
                 'smart_working': `Smart Working del ${formatDate(eventDate)}\n\nVuoi eliminare questo smart working?`,
                 'presente': `Presenza in ufficio del ${formatDate(eventDate)}\n\nVuoi eliminare questa presenza?`
@@ -613,7 +606,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function getShortTitle(status) {
         switch (status) {
             case 'presente': return 'P';
-            case 'ferie': return 'F';
+            case 'ferie': return 'A';
             case 'smart_working': return 'SW';
             case 'permesso': return 'Pe';
             default: return status;
@@ -664,17 +657,25 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     function updateStats(data) {
-        const yearStats = data.year_stats;
-        const aggregated = data.aggregated;
+        const yearStats = data.year_stats || {};
+        const aggregated = data.aggregated || {};
         
-        document.getElementById('stat-ferie').textContent = yearStats.ferie || 0;
-        document.getElementById('stat-smart').textContent = yearStats.smart_working || 0;
-        document.getElementById('stat-permesso').textContent = yearStats.permesso || 0;
-        document.getElementById('stat-presente').textContent = yearStats.presente || 0;
+        // ✅ Somma ferie + permessi = assenze
+        const totalAssenze = (yearStats.ferie || 0) + (yearStats.permesso || 0);
         
-        // ✅ NUOVO: Statistiche aggregate
-        document.getElementById('stat-work-days').textContent = aggregated.work_days || 0;
-        document.getElementById('stat-absence-days').textContent = aggregated.absence_days || 0;
+        // ✅ Usa optional chaining per evitare errori
+        const assenzeEl = document.getElementById('stat-assenze');
+        const smartEl = document.getElementById('stat-smart');
+        const presenteEl = document.getElementById('stat-presente');
+        const workDaysEl = document.getElementById('stat-work-days');
+        const absenceDaysEl = document.getElementById('stat-absence-days');
+        
+        // Aggiorna solo se l'elemento esiste
+        if (assenzeEl) assenzeEl.textContent = totalAssenze;
+        if (smartEl) smartEl.textContent = yearStats.smart_working || 0;
+        if (presenteEl) presenteEl.textContent = yearStats.presente || 0;
+        if (workDaysEl) workDaysEl.textContent = aggregated.work_days || 0;
+        if (absenceDaysEl) absenceDaysEl.textContent = aggregated.absence_days || 0;
     }
     
     function createPieChart(percentages) {
