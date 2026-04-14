@@ -48,6 +48,7 @@ class AppServiceProvider extends ServiceProvider
             if (!Auth::check()) {
                 $event->menu->header_menu = [];
             }
+            $event->menu->slim_header_menu[0]['text'] = Auth::check() ? Auth::user()->name : '';
 
             if (Auth::user() ){
                 if(Auth::user()->gestiamopresenze) {

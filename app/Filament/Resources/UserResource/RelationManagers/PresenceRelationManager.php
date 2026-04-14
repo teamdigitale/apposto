@@ -21,6 +21,13 @@ class PresenceRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->badge()
                     ->label('Stato')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'ferie' => 'Assenza',
+                        'presente' => 'Presente',
+                        'smart_working' => 'Smart working',
+                        'permesso' => 'Permesso',
+                        default => $state,
+                    })
                     ->color(fn (string $state): string => match ($state) {
                         'presente' => 'success',
                         'ferie' => 'warning',

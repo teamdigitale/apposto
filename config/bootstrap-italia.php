@@ -194,6 +194,10 @@ return [
     'menu' => [
         'slim-header' => [
             [
+                'url' => '/profile',
+                'text' => '',
+            ],
+            [
                 'url' => '/',
                 'text' => 'Pagina iniziale',
             ],

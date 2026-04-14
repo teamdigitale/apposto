@@ -28,7 +28,7 @@
                         @endif
 
                         <p class="mb-4 pt-3 lora">
-                        per dubbi o domande non evita a contattarci</p>
+                        per dubbi o domande non esitare a contattarci</p>
                 </div>
               </div>
             </div>
