@@ -17,7 +17,7 @@ class ProjectResource extends Resource
     protected static ?string $pluralModelLabel = 'Progetti';
     protected static ?string $navigationLabel = 'Sezione Progetti';
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';
-    protected static ?string $navigationGroup = 'Gestione Ferie';
+    protected static ?string $navigationGroup = 'Gestione Assenze';
 
     public static function form(Form $form): Form
     {

@@ -152,27 +152,6 @@
                 </div>
             </div>
 
-            <!-- Card Info Ferie -->
-            <div class="card mt-3">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-info-circle"></i> Info Ferie</h6>
-                    <div class="row text-center">
-                        <div class="col-6">
-                            <h4 class="text-primary">{{ Auth::user()->ferie_totali }}</h4>
-                            <small class="text-muted">Totali</small>
-                        </div>
-                        <div class="col-6">
-                            <h4 class="text-danger">{{ Auth::user()->ferie_usate }}</h4>
-                            <small class="text-muted">Usate</small>
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="text-center">
-                        <h3 class="text-success mb-0">{{ Auth::user()->remaining_leave_days }}</h3>
-                        <small class="text-muted">Giorni Disponibili</small>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -305,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Se è un collega, mostra info senza permettere modifica
             if (info.event.extendedProps && info.event.extendedProps.type === 'colleague') {
                 const userName = info.event.extendedProps.userName || 'Collega';
-                const status = info.event.extendedProps.status === 'ferie' ? 'Ferie' : 'Permesso';
+                const status = info.event.extendedProps.status === 'ferie' ? 'Assenza' : 'Permesso';
                 const date = formatDate(info.event.startStr);
                 showAlert(`ℹ️ ${userName} - ${status} il ${date}`, 'info');
                 return;
@@ -331,7 +310,7 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // ✅ FIX: Testo specifico in base al tipo
             const messages = {
-                'ferie': `Ferie del ${formatDate(eventDate)}\n\nVuoi eliminare questa assenza?`,
+                'ferie': `Assenza del ${formatDate(eventDate)}\n\nVuoi eliminare questa assenza?`,
                 'permesso': `Permesso del ${formatDate(eventDate)}\n\nVuoi eliminare questo permesso?`,
                 'smart_working': `Smart Working del ${formatDate(eventDate)}\n\nVuoi eliminare questo smart working?`,
                 'presente': `Presenza in ufficio del ${formatDate(eventDate)}\n\nVuoi eliminare questa presenza?`

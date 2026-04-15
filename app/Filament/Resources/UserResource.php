@@ -97,9 +97,9 @@ class UserResource extends Resource
                 Tables\Columns\IconColumn::make('gestiamopresenze')
                     ->boolean()->label('Timesheet'),
                 Tables\Columns\TextColumn::make('ferie_totali')
-                    ->numeric()->label('Ferie Tot'),
+                    ->numeric()->label('Assenze Tot'),
                 Tables\Columns\TextColumn::make('ferie_usate')
-                    ->numeric()->label('Ferie Usate'),
+                    ->numeric()->label('Assenze Usate'),
                 Tables\Columns\TextColumn::make('giorni_in_smart')
                     ->numeric()->label('Smart'),
             ])

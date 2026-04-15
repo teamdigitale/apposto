@@ -35,7 +35,7 @@
                             <td class="text-center">
                                 @switch($status)
                                     @case('presente') <span class="badge bg-success">P</span> @break
-                                    @case('ferie') <span class="badge bg-warning text-dark">F</span> @break
+                                    @case('ferie') <span class="badge bg-warning text-dark">A</span> @break
                                     @case('permesso') <span class="badge bg-danger">Pe</span> @break
                                     @case('smart_working') <span class="badge bg-info text-dark">SW</span> @break
                                     @default -
