@@ -51,13 +51,11 @@ class AppServiceProvider extends ServiceProvider
             $event->menu->slim_header_menu[0]['text'] = Auth::check() ? Auth::user()->name : '';
 
             if (Auth::user() ){
-                if(Auth::user()->gestiamopresenze) {
                     $event->menu->header_menu[] = [
                         "url" => '/presences',
                         "text" => 'Timesheet',
                         "active" => 0,
                     ];
-                }
 
                 if (Auth::user()->superuser) {
                     $event->menu->header_menu[] = [
