@@ -111,6 +111,31 @@
             <i class="bi bi-info-circle"></i> Nessun progetto con membri trovato nel periodo selezionato.
         </div>
     @else
+        {{-- PUNTO 4: Tab switcher Per Progetto / Per Utente --}}
+        <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-progetti-btn"
+                        type="button" role="tab"
+                        onclick="switchTab('tab-progetti')">
+                    <i class="bi bi-briefcase"></i> Per Progetto
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-utenti-btn"
+                        type="button" role="tab"
+                        onclick="switchTab('tab-utenti')">
+                    <i class="bi bi-people"></i> Per Utente
+                    <span class="badge bg-secondary ms-1">{{ count($userAbsences) }}</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="dashboardTabsContent">
+        {{-- ======================================================= --}}
+        {{-- TAB 1: Vista per Progetto (contenuto originale)         --}}
+        {{-- ======================================================= --}}
+        <div class="tab-pane fade show active" id="tab-progetti" role="tabpanel">
+
         <!-- Riepilogo Generale -->
         <div class="row mb-4">
             <div class="col-md-12">
@@ -359,6 +384,107 @@
                 </div>
             </div>
         @endforeach
+
+        </div>{{-- fine tab-pane tab-progetti --}}
+
+        {{-- ======================================================= --}}
+        {{-- TAB 2: Vista per Utente (PUNTO 4)                       --}}
+        {{-- ======================================================= --}}
+        <div class="tab-pane fade" id="tab-utenti" role="tabpanel">
+            @if(empty($userAbsences))
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Nessun utente trovato nei tuoi progetti per il periodo selezionato.
+                </div>
+            @else
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-people-fill"></i>
+                            Riepilogo per Utente
+                            <small class="ms-2 fw-normal opacity-75">{{ $startDate->format('d/m/Y') }} — {{ $endDate->format('d/m/Y') }}</small>
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Persona</th>
+                                        <th>Progetti / Ruolo</th>
+                                        <th class="text-center">🚫 Assenze</th>
+                                        <th class="text-center">⏰ Permessi</th>
+                                        <th class="text-center">💻 Smart W.</th>
+                                        <th class="text-center">🏢 Presente</th>
+                                        <th class="text-center">% Assenza</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($userAbsences as $ua)
+                                    <tr>
+                                        <td>
+                                            <strong>{{ $ua['user']->name }}</strong><br>
+                                            <small class="text-muted">{{ $ua['user']->email }}</small>
+                                        </td>
+                                        <td>
+                                            @foreach($ua['projects'] as $proj)
+                                                <span class="badge bg-light text-dark border me-1 mb-1">
+                                                    {{ $proj->name }}
+                                                    @if($proj->pivot->role)
+                                                        <span class="text-muted">({{ $proj->pivot->role }})</span>
+                                                    @endif
+                                                </span>
+                                            @endforeach
+                                        </td>
+                                        <td class="text-center">
+                                            @if($ua['stats']['ferie'] > 0)
+                                                <span class="badge bg-warning text-dark">{{ $ua['stats']['ferie'] }}</span>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center">
+                                            @if($ua['stats']['permesso'] > 0)
+                                                <span class="badge bg-danger">{{ $ua['stats']['permesso'] }}</span>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center">
+                                            @if($ua['stats']['smart_working'] > 0)
+                                                <span class="badge bg-info">{{ $ua['stats']['smart_working'] }}</span>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center">
+                                            @if($ua['stats']['presente'] > 0)
+                                                <span class="badge bg-success">{{ $ua['stats']['presente'] }}</span>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center">
+                                            @php
+                                                $pct = $ua['absence_percentage'];
+                                                $cls = $pct > 50 ? 'percentage-high' : ($pct > 25 ? 'percentage-medium' : 'percentage-low');
+                                            @endphp
+                                            <span class="{{ $cls }}">{{ $pct }}%</span>
+                                            <div class="progress mt-1" style="height:4px;">
+                                                <div class="progress-bar {{ $pct > 50 ? 'bg-danger' : ($pct > 25 ? 'bg-warning' : 'bg-success') }}"
+                                                     style="width:{{ min($pct,100) }}%"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>{{-- fine tab-pane tab-utenti --}}
+
+        </div>{{-- fine tab-content --}}
     @endif
 
     <!-- Legend -->
@@ -386,6 +512,31 @@
 
 @section('js')
 <script>
+// Tab switcher vanilla JS (no window.bootstrap richiesto)
+window.switchTab = function(targetId) {
+    // Aggiorna pulsanti
+    document.querySelectorAll('#dashboardTabs .nav-link').forEach(function(btn) {
+        btn.classList.remove('active');
+    });
+    const activeBtn = document.getElementById(targetId.replace('tab-', 'tab-') + '-btn');
+    // Mappa id pane → id button
+    const btnMap = {
+        'tab-progetti': 'tab-progetti-btn',
+        'tab-utenti':   'tab-utenti-btn',
+    };
+    const btnEl = document.getElementById(btnMap[targetId]);
+    if (btnEl) btnEl.classList.add('active');
+
+    // Aggiorna pane
+    document.querySelectorAll('#dashboardTabsContent .tab-pane').forEach(function(pane) {
+        pane.classList.remove('show', 'active');
+    });
+    const targetPane = document.getElementById(targetId);
+    if (targetPane) {
+        targetPane.classList.add('show', 'active');
+    }
+};
+
 document.addEventListener('DOMContentLoaded', function () {
     loadDashboardCharts();
     

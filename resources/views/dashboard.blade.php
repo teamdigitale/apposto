@@ -15,7 +15,7 @@
                         
                         <div class="card-body p-0 my-2">
                           <h3 class="green-title-big t-primary mb-8"><a href="/booking" class="text-decoration-none" data-element="service-link">Prenota una postazione</a></h3>
-                          <p class="text-paragraph">Tramite semplici passaggi scegli la tua scrivania.</p>
+                          <p class="text-paragraph">Tramite semplici passaggi scegli la tua scrivania.<br/>Per prenotare una postazione devi appartenere ad un team interno.</p>
                         </div>
                       </div>
                     </div>

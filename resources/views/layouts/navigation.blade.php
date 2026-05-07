@@ -15,6 +15,27 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    {{-- PUNTO 2: visibile a superuser e project manager --}}
+                    @if(Auth::user()->superuser || Auth::user()->is_project_manager)
+                    <x-nav-link :href="route('projectRequests.index')" :active="request()->routeIs('projectRequests.*')">
+                        Richieste Progetti
+                        @php
+                            $pendingCount = \App\Models\ProjectRequest::pending()
+                                ->when(!Auth::user()->superuser, function($q) {
+                                    $managedIds = Auth::user()->projects()
+                                        ->wherePivot('role', 'manager')
+                                        ->pluck('projects.id');
+                                    $q->whereIn('project_id', $managedIds);
+                                })
+                                ->count();
+                        @endphp
+                        @if($pendingCount > 0)
+                            <span class="ms-1 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white">
+                                {{ $pendingCount }}
+                            </span>
+                        @endif
+                    </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -70,6 +91,11 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            @if(Auth::user()->superuser || Auth::user()->is_project_manager)
+            <x-responsive-nav-link :href="route('projectRequests.index')" :active="request()->routeIs('projectRequests.*')">
+                Richieste Progetti
+            </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

@@ -104,14 +104,10 @@
                                     </small>
                                 </div>
                                 <div>
-                                    <form method="POST" 
-                                        action="{{ route('projects.requestJoin', $project->id) }}" 
-                                        class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-success">
-                                            <i class="bi bi-send"></i> Richiedi di Unirti
-                                        </button>
-                                    </form>
+                                    <button type="button" class="btn btn-sm btn-success"
+                                            onclick="openJoinModal({{ $project->id }}, '{{ addslashes($project->name) }}')">
+                                        <i class="bi bi-send"></i> Richiedi di Unirti
+                                    </button>
                                 </div>
                             </div>
                         @endforeach
@@ -141,5 +137,95 @@
         </div>
     </div>
 </div>
+
+
+{{-- Modal richiesta join con ruolo e messaggio --}}
+<div class="modal fade" id="modalJoinRequest" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="joinRequestForm" action="">
+                @csrf
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-send"></i>
+                        Richiesta di unione a <span id="joinModalProjectName"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" onclick="closeJoinModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-person-badge"></i> Con quale ruolo vuoi unirti?
+                        </label>
+                        <select name="role" class="form-select" required>
+                            <option value="">— Seleziona un ruolo —</option>
+                            <option value="developer">👨‍💻 Developer</option>
+                            <option value="designer">🎨 Designer</option>
+                            <option value="tester">🧪 Tester</option>
+                            <option value="product owner">📋 Product Owner</option>
+                            <option value="scrum master">🔄 Scrum Master</option>
+                            <option value="member">👤 Member (generico)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-chat-text"></i> Messaggio per l'amministratore
+                            <small class="text-muted fw-normal">(opzionale)</small>
+                        </label>
+                        <textarea name="message" class="form-control" rows="3"
+                                  placeholder="Es: Ho esperienza con Vue.js e sono disponibile da subito..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeJoinModal()">Annulla</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-send"></i> Invia Richiesta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Route base per requestJoin — Laravel genera l'URL con il placeholder {project}
+const joinRouteBase = '{{ url('/projects') }}';
+
+function openJoinModal(projectId, projectName) {
+    document.getElementById('joinModalProjectName').textContent = projectName;
+    document.getElementById('joinRequestForm').action = joinRouteBase + '/' + projectId + '/request-join';
+    // Reset campi
+    document.getElementById('joinRequestForm').reset();
+    // Apri modal vanilla (stesso approccio degli altri modal del progetto)
+    const el = document.getElementById('modalJoinRequest');
+    el.style.display = 'block';
+    el.classList.add('show');
+    el.removeAttribute('aria-hidden');
+    document.body.classList.add('modal-open');
+    let bd = document.getElementById('join-modal-backdrop');
+    if (!bd) {
+        bd = document.createElement('div');
+        bd.id = 'join-modal-backdrop';
+        bd.className = 'modal-backdrop fade show';
+        document.body.appendChild(bd);
+    }
+    bd.style.display = 'block';
+}
+
+function closeJoinModal() {
+    const el = document.getElementById('modalJoinRequest');
+    el.style.display = 'none';
+    el.classList.remove('show');
+    el.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+    const bd = document.getElementById('join-modal-backdrop');
+    if (bd) bd.style.display = 'none';
+}
+
+// Chiudi cliccando fuori
+document.getElementById('modalJoinRequest').addEventListener('click', function(e) {
+    if (e.target === this) closeJoinModal();
+});
+</script>
 
 </x-app-layout>

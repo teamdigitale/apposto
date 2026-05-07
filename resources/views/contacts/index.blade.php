@@ -35,7 +35,7 @@
                     <td>{{ $contact->ruolo }}</td>
                     <td>{{ $contact->addetto_emergenza ? "SI" : "NO" }}</td>
                     <td>{{ $contact->addetto_al_primo_soccorso ? "SI" : "NO" }}</td>
-                    <td>{{ $contact->team->label }}</td>
+                    <td>{{ $contact->team?->label ?? '—' }}</td>
                     <td>  <?php  
                     if (count($contact->bookings_active) > 0){
                         $booking_desk = $contact->bookings_active->first()->desk;

@@ -219,4 +219,35 @@ class ProjectMembershipController extends Controller
         
         return back()->with('success', 'Risorse progetto aggiornate!');
     }
+
+    public function updateMemberRole(Request $request, Project $project, \App\Models\User $member)
+    {
+        $user = Auth::user();
+
+        // Autorizzazione: superuser oppure PM del progetto
+        $authorized = $user->superuser ||
+            ($user->is_project_manager &&
+             $user->projects()->wherePivot('role', 'manager')->where('projects.id', $project->id)->exists());
+
+        if (!$authorized) {
+            abort(403, 'Non hai i permessi per modificare i ruoli in questo progetto.');
+        }
+
+        $validated = $request->validate([
+            'role' => 'required|string|in:developer,designer,tester,product owner,scrum master,manager,member',
+        ]);
+
+        // Verifica che il membro sia effettivamente nel progetto
+        if (!$member->projects()->where('project_id', $project->id)->exists()) {
+            return back()->with('error', 'L utente non è membro di questo progetto.');
+        }
+
+        $member->projects()->updateExistingPivot($project->id, [
+            'role'       => $validated['role'],
+            'updated_at' => now(),
+        ]);
+
+        return back()->with('success', "Ruolo di {$member->name} aggiornato a \"{$validated['role']}\" con successo!");
+    }
+
 }

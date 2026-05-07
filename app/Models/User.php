@@ -36,6 +36,7 @@ class User extends Authenticatable
         'gestiamopresenze',
         'giorni_in_smart',
         'superuser',
+        'is_project_manager',
         'addetto_emergenza',
         'addetto_al_primo_soccorso',
         'ruolo'

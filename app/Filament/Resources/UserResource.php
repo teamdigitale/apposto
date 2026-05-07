@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Hash;
 use App\Filament\Resources\UserResource\RelationManagers\PresenceRelationManager;
+use App\Filament\Resources\UserResource\RelationManagers\ProjectsRelationManager;
 
 class UserResource extends Resource
 {
@@ -58,6 +59,10 @@ class UserResource extends Resource
                 Forms\Components\Toggle::make('gestiamopresenze')
                     ->required()->label('Gestiamo presenze'),
                 Forms\Components\Toggle::make('superuser')
+                    ->label('Super Admin'),
+                Forms\Components\Toggle::make('is_project_manager')
+                    ->label('Project Manager (gestisce richieste dei propri progetti)')
+                    ->helperText('Può approvare/rifiutare richieste solo per i progetti in cui ha ruolo manager')
                     ->required()->label('Super User'),
                 Forms\Components\Toggle::make('addetto_emergenza')
                     ->label('Add Emergenza/Antincendio'),
@@ -93,6 +98,11 @@ class UserResource extends Resource
                 Tables\Columns\IconColumn::make('allow_view')
                     ->boolean()->label('Condivide Info'),
                 Tables\Columns\IconColumn::make('superuser')
+                    ->label('Super Admin')
+                    ->boolean(),
+                Tables\Columns\IconColumn::make('is_project_manager')
+                    ->label('Proj. Manager')
+                    ->boolean()
                     ->boolean()->label('Super User'),
                 Tables\Columns\IconColumn::make('gestiamopresenze')
                     ->boolean()->label('Timesheet'),
@@ -126,6 +136,7 @@ class UserResource extends Resource
     {
         return [
             PresenceRelationManager::class,
+            ProjectsRelationManager::class,
         ];
     }
 

@@ -195,16 +195,68 @@ class AbsenceDashboardController extends Controller
             $globalStats['least_affected_project'] = end($projectAbsences) ?: null;
         }
       
-            return view('absences.dashboard', compact(
-                'projectAbsences',
-                'startDate', 
-                'endDate', 
-                'globalStats', 
-                'totalWorkDays',
-                'allUserProjects',
-                'projectFilter'
-            ));        
+        // -------------------------------------------------------
+        // PUNTO 4: Calcola vista per utente
+        // Raccoglie tutti i membri unici dei progetti e aggrega
+        // le loro presenze nel periodo selezionato.
+        // -------------------------------------------------------
+        $allMembers = collect();
+        foreach ($projects as $project) {
+            foreach ($project->users as $member) {
+                if (!$allMembers->contains('id', $member->id)) {
+                    $allMembers->push($member);
+                }
+            }
         }
+
+        $userAbsences = [];
+        $projectIds   = $projects->pluck('id');
+
+        foreach ($allMembers as $member) {
+            $memberPresences = Presence::where('user_id', $member->id)
+                ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+                ->get();
+
+            // Progetti condivisi con il membro (per mostrare ruolo)
+            $memberProjects = $member->projects()
+                ->whereIn('projects.id', $projectIds)
+                ->withPivot('role')
+                ->get();
+
+            $ferieCount    = $memberPresences->where('status', 'ferie')->count();
+            $permessoCount = $memberPresences->where('status', 'permesso')->count();
+            $totalAbsences = $ferieCount + $permessoCount;
+
+            $userAbsences[] = [
+                'user'               => $member,
+                'projects'           => $memberProjects,
+                'stats'              => [
+                    'ferie'         => $ferieCount,
+                    'permesso'      => $permessoCount,
+                    'smart_working' => $memberPresences->where('status', 'smart_working')->count(),
+                    'presente'      => $memberPresences->where('status', 'presente')->count(),
+                ],
+                'total_absences'     => $totalAbsences,
+                'absence_percentage' => $totalWorkDays > 0
+                    ? round(($totalAbsences / $totalWorkDays) * 100, 1)
+                    : 0,
+            ];
+        }
+
+        // Ordina per percentuale assenza decrescente
+        usort($userAbsences, fn($a, $b) => $b['absence_percentage'] <=> $a['absence_percentage']);
+
+        return view('absences.dashboard', compact(
+            'projectAbsences',
+            'userAbsences',
+            'startDate', 
+            'endDate', 
+            'globalStats', 
+            'totalWorkDays',
+            'allUserProjects',
+            'projectFilter'
+        ));        
+    }
 
     /**
      * API endpoint per ottenere assenze di un progetto specifico (JSON)

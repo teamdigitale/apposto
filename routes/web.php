@@ -86,6 +86,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/projects/{project}/leave', [ProjectMembershipController::class, 'leaveSimple'])->name('projects.leave.simple');
     Route::delete('/projects/{project}/leave', [ProjectMembershipController::class, 'leave'])->name('projects.leave');
     Route::patch('/projects/{project}/update-role', [ProjectMembershipController::class, 'updateRole'])->name('projects.update-role');
+    Route::patch('/projects/{project}/members/{member}/role', [ProjectMembershipController::class, 'updateMemberRole'])->name('projects.update-member-role');
     
     Route::get('/absences/dashboard', [AbsenceDashboardController::class, 'index'])->name('absences.dashboard');
     Route::get('/absences/project/{project}', [AbsenceDashboardController::class, 'projectAbsences'])->name('absences.project');

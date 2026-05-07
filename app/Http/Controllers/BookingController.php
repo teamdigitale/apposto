@@ -23,6 +23,12 @@ class BookingController extends Controller
     {
         $request->session()->forget('booking');
 
+        // Guard: utente senza team assegnato non può prenotare
+        if (!$this->user->team) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Il tuo account non è ancora associato a nessun team. Contatta un amministratore.');
+        }
+
         $planWorkplaceIds = $this->user->team->plans->pluck('workplace_id')->unique();
 
         $workplaces = Cache::remember("workplaces_user_{$this->user->id}", 60, function () use ($planWorkplaceIds) {

@@ -120,10 +120,35 @@
                                             </td>
                                             <td>{{ $user->email }}</td>
                                             <td>
-                                                <span class="badge bg-secondary">
-                                                    <i class="bi bi-person-badge"></i>
-                                                    {{ ucfirst($user->pivot->role) }}
-                                                </span>
+                                                @php
+                                                    $canEditRoles = Auth::user()->superuser ||
+                                                        (Auth::user()->is_project_manager &&
+                                                         Auth::user()->projects()->wherePivot('role','manager')->where('projects.id',$project->id)->exists());
+                                                @endphp
+                                                @if($canEditRoles)
+                                                    {{-- Form inline per modificare il ruolo di ogni membro --}}
+                                                    <form method="POST"
+                                                          action="{{ route('projects.update-member-role', [$project->id, $user->id]) }}"
+                                                          class="d-flex align-items-center gap-1">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <select name="role" class="form-select form-select-sm"
+                                                                style="width:auto;min-width:130px;"
+                                                                onchange="this.form.submit()">
+                                                            @foreach(['developer','designer','tester','product owner','scrum master','manager','member'] as $r)
+                                                                <option value="{{ $r }}"
+                                                                    {{ $user->pivot->role === $r ? 'selected' : '' }}>
+                                                                    {{ ucfirst($r) }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </form>
+                                                @else
+                                                    <span class="badge bg-secondary">
+                                                        <i class="bi bi-person-badge"></i>
+                                                        {{ ucfirst($user->pivot->role) }}
+                                                    </span>
+                                                @endif
                                             </td>
                                             <td>{{ $user->pivot->created_at->format('d/m/Y') }}</td>
                                         </tr>

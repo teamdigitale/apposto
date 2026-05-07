@@ -281,12 +281,54 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             
-            // Se è un collega, mostra info senza permettere modifica
-            if (info.event.extendedProps && info.event.extendedProps.type === 'colleague') {
-                const userName = info.event.extendedProps.userName || 'Collega';
-                const status = info.event.extendedProps.status === 'ferie' ? 'Assenza' : 'Permesso';
-                const date = formatDate(info.event.startStr);
-                showAlert(`ℹ️ ${userName} - ${status} il ${date}`, 'info');
+            // PUNTO 1+3: Evento aggregato colleghi → apre modale con lista e ruoli
+            if (info.event.extendedProps && info.event.extendedProps.type === 'colleague_group') {
+                const props  = info.event.extendedProps;
+                const date   = formatDate(info.event.startStr);
+                const users  = props.users || [];
+                const bucket = props.bucket;
+                
+                const bucketLabel = {
+                    'ferie':         '🚫 Assenze/Permessi',
+                    'smart_working': '💻 Smart Working',
+                    'presente':      '🏢 Presenti in ufficio',
+                }[bucket] || bucket;
+
+                let rows = users.map(u => {
+                    const statusLabel = {
+                        'ferie':         '🚫 Assenza',
+                        'permesso':      '⏰ Permesso',
+                        'smart_working': '💻 Smart W.',
+                        'presente':      '🏢 Presente',
+                    }[u.status] || u.status;
+                    // PUNTO 3: mostra il ruolo nel progetto
+                    const roleLabel = u.role ? `<span class="badge bg-secondary ms-1">${u.role}</span>` : '';
+                    return `<tr><td><strong>${u.name}</strong>${roleLabel}</td><td>${statusLabel}</td></tr>`;
+                }).join('');
+
+                document.getElementById('modal-colleghi-titolo').textContent = `${bucketLabel} — ${date}`;
+                document.getElementById('modal-colleghi-body').innerHTML = `
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Persona</th><th>Stato</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>`;
+                
+                // Apri il modal manualmente senza dipendere da window.bootstrap
+                const modalEl = document.getElementById('modalColleghi');
+                modalEl.style.display = 'block';
+                modalEl.classList.add('show');
+                modalEl.removeAttribute('aria-hidden');
+                modalEl.setAttribute('aria-modal', 'true');
+                document.body.classList.add('modal-open');
+                // Crea/aggiorna backdrop
+                let backdrop = document.getElementById('modal-backdrop-colleghi');
+                if (!backdrop) {
+                    backdrop = document.createElement('div');
+                    backdrop.id = 'modal-backdrop-colleghi';
+                    backdrop.className = 'modal-backdrop fade show';
+                    document.body.appendChild(backdrop);
+                }
+                backdrop.style.display = 'block';
                 return;
             }
             
@@ -774,7 +816,41 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // Carica grafici al load della pagina
     loadCharts();
+
+    // Chiudi modal colleghi (vanilla JS, senza window.bootstrap)
+    window.closeModalColleghi = function() {
+        const modalEl = document.getElementById('modalColleghi');
+        modalEl.style.display = 'none';
+        modalEl.classList.remove('show');
+        modalEl.setAttribute('aria-hidden', 'true');
+        modalEl.removeAttribute('aria-modal');
+        document.body.classList.remove('modal-open');
+        const backdrop = document.getElementById('modal-backdrop-colleghi');
+        if (backdrop) backdrop.style.display = 'none';
+    };
+    // Chiudi anche cliccando fuori dal modal
+    document.getElementById('modalColleghi').addEventListener('click', function(e) {
+        if (e.target === this) closeModalColleghi();
+    });
 });
 </script>
 @stop
+
+{{-- PUNTO 1: Modale dettaglio colleghi per giorno --}}
+<div class="modal fade" id="modalColleghi" tabindex="-1" aria-labelledby="modal-colleghi-titolo" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modal-colleghi-titolo">Colleghi</h5>
+                <button type="button" class="btn-close btn-close-white" onclick="closeModalColleghi()"></button>
+            </div>
+            <div class="modal-body" id="modal-colleghi-body">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModalColleghi()">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 </x-app-layout>

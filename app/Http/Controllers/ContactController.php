@@ -13,7 +13,14 @@ class ContactController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::where('allow_view', true)->where('id','<>',Auth::user()->id); // Solo utenti che hanno dato il consenso
+        $query = User::where('allow_view', true)
+            ->where('id', '<>', Auth::user()->id)
+            // Eager load per evitare N+1 e crash su relazioni null
+            ->with([
+                'team',
+                'defaultWorkstation',
+                'bookings_active' => fn($q) => $q->with(['desk.plan.workplace']),
+            ]);
 
         if ($request->filled('search')) {
             $search = $request->input('search');
