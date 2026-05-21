@@ -1,5 +1,37 @@
 <x-app-layout>
 @section('css')
+<style>
+/* Icone identificative eventi propri */
+.fc-event-own {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    width: 100%;
+    font-size: 0.82em;
+    line-height: 1.3;
+}
+.fc-event-icon {
+    font-size: 1em;
+    flex-shrink: 0;
+}
+.fc-event-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
+}
+/* Colleghi aggregati */
+.fc-event-colleague {
+    padding: 1px 4px;
+    font-size: 0.78em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.92;
+}
+</style>
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/main.min.css' rel='stylesheet' />
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/index.global.min.js'></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -234,7 +266,37 @@ document.addEventListener('DOMContentLoaded', function () {
         selectable: true,          // ✅ ABILITA SELEZIONE
         selectMirror: true,        // ✅ Mostra preview durante il drag
         unselectAuto: false,       // ✅ Non deseleziona automaticamente
-        
+
+        // Render personalizzato degli eventi: icona identificativa per i propri
+        eventContent: function(arg) {
+            const props = arg.event.extendedProps;
+
+            // Colleghi aggregati: testo normale (già hanno emoji nel titolo)
+            if (props.type === 'colleague_group') {
+                return { html: `<div class="fc-event-colleague">${arg.event.title}</div>` };
+            }
+
+            // Evento sfondo (festività): lascia fare a FullCalendar
+            if (arg.event.display === 'background') return true;
+
+            // Propri eventi: icona + etichetta breve
+            const icons = {
+                'presente':      { svg: '🏢', label: 'Presente' },
+                'ferie':         { svg: '🏖️', label: 'Ferie' },
+                'smart_working': { svg: '💻', label: 'Smart W.' },
+                'permesso':      { svg: '⏰', label: 'Permesso' },
+            };
+            const status = props.status || arg.event.title;
+            const icon   = icons[status] || { svg: '📅', label: status };
+
+            return {
+                html: `<div class="fc-event-own" title="${icon.label}">
+                    <span class="fc-event-icon">${icon.svg}</span>
+                    <span class="fc-event-label">${icon.label}</span>
+                </div>`
+            };
+        },
+
         // Eventi salvati + festività + colleghi
         events: [
             ...savedPresences.map(p => ({
