@@ -95,24 +95,24 @@ jobs:
     if: github.ref == 'refs/heads/main'
     environment: production
     permissions:
-      id-token: write
       contents: read
       packages: read
+    env:
+      # Kubeconfig namespace-scoped per la ServiceAccount apposto-deploy
+      # (cluster developers-italia-prod, namespace apposto). I permessi sono
+      # definiti in k8s-configuration/manifests/apposto-deploy-rbac.yaml.
+      KUBECONFIG: ${{ github.workspace }}/.kubeconfig
     steps:
       - name: Setup Helm
         uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4
 
-      - name: Azure Login
-        uses: azure/login@a65d910e8af852a8061c627c456678983e180302 # v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Get AKS credentials
+      - name: Write kubeconfig
         run: |
-          az aks get-credentials \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --name ${{ secrets.AZURE_AKS_CLUSTER_NAME }} \
-            --overwrite-existing
+          umask 077
+          printf '%s' "${KUBECONFIG_APPOSTO}" > "${KUBECONFIG}"
+          kubectl auth whoami
+        env:
+          KUBECONFIG_APPOSTO: ${{ secrets.KUBECONFIG_APPOSTO }}
 
       - name: Log in to Helm registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
