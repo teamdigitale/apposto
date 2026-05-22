@@ -104,11 +104,9 @@
                             <span class="badge" style="background: #ffc107; color: #000;">🚫 Assenze</span>
                             <span class="badge" style="background: #28a745; color: white;">🏢 Presente in Ufficio</span>
                             <span class="badge" style="background: #17a2b8; color: white;">💻 Smart Working</span>
-                            <span class="badge" style="background: #dc3545; color: white;">⏰ Permesso</span>
                         </div>
                         <hr class="my-2">
-                        <small class="text-muted d-flex align-items-center gap-2">
-                            <span style="font-size:1.1em;">🏖️💻🏢⏰</span>
+                        <small class="text-muted align-items-center gap-2">
                             Gli eventi con icona faccina
                             <span style="font-size:1.1em;">😊</span>
                             sono le tue presenze personali — quelle registrate con il tuo profilo (<strong>{{ auth()->user()->name }}</strong>).
