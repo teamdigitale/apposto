@@ -100,11 +100,19 @@
                     
                     <div class="mt-3 p-3 bg-light border rounded">
                         <h6 class="mb-2"><i class="bi bi-info-circle"></i> Legenda</h6>
-                        <div class="d-flex flex-wrap gap-3">
+                        <div class="d-flex flex-wrap gap-2 mb-2">
                             <span class="badge" style="background: #ffc107; color: #000;">🚫 Assenze</span>
                             <span class="badge" style="background: #28a745; color: white;">🏢 Presente in Ufficio</span>
-                            <span class="badge" style="background: #17a2b8; color: white;margin-left: 0.5rem;">💻 Smart Working</span>
+                            <span class="badge" style="background: #17a2b8; color: white;">💻 Smart Working</span>
+                            <span class="badge" style="background: #dc3545; color: white;">⏰ Permesso</span>
                         </div>
+                        <hr class="my-2">
+                        <small class="text-muted d-flex align-items-center gap-2">
+                            <span style="font-size:1.1em;">🏖️💻🏢⏰</span>
+                            Gli eventi con icona faccina
+                            <span style="font-size:1.1em;">😊</span>
+                            sono le tue presenze personali — quelle registrate con il tuo profilo (<strong>{{ auth()->user()->name }}</strong>).
+                        </small>
                     </div>
                 </div>
             </div>
@@ -287,7 +295,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 'permesso':      { svg: '⏰', label: 'Permesso' },
             };
             const status = props.status || arg.event.title;
-            const icon   = icons[status] || { svg: '📅', label: status };
+            const icon   = icons[status] || { svg: '😊', label: status };
 
             return {
                 html: `<div class="fc-event-own" title="${icon.label}">
