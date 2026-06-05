@@ -75,7 +75,15 @@
                                 </label>
                                 <select name="project_filter" class="form-select form-select-sm" onchange="this.form.submit()">
                                     <option value="">Tutti i progetti</option>
-                                    @foreach(\App\Models\Project::where('active', true)->orderBy('name')->get() as $proj)
+                                    @php
+                                        $user = auth()->user();
+                                        if ($user->superuser || $user->is_project_manager) {
+                                            $selectableProjects = \App\Models\Project::where('active', true)->orderBy('name')->get();
+                                        } else {
+                                            $selectableProjects = $user->projects()->where('active', true)->orderBy('name')->get();
+                                        }
+                                    @endphp
+                                    @foreach($selectableProjects as $proj)
                                         <option value="{{ $proj->id }}" {{ request('project_filter') == $proj->id ? 'selected' : '' }}>
                                             {{ $proj->name }}
                                         </option>

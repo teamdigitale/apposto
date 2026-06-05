@@ -88,10 +88,18 @@ class PresenceController extends Controller
             }
         }
 
-        $validFilter = $projectFilter && \App\Models\Project::where('id', (int) $projectFilter)
-            ->where('active', true)->exists()
-            ? (int) $projectFilter
-            : null;
+        if ($projectFilter) {
+            $pid = (int) $projectFilter;
+            if ($this->user->superuser || $this->user->is_project_manager) {
+                $validFilter = \App\Models\Project::where('id', $pid)->where('active', true)->exists()
+                    ? $pid : null;
+            } else {
+                $validFilter = $this->user->projects()->where('projects.id', $pid)->where('active', true)->exists()
+                    ? $pid : null;
+            }
+        } else {
+            $validFilter = null;
+        }
 
         $colleaguesQuery = \App\Models\User::where('id', '!=', $this->user->id);
 
