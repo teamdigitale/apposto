@@ -88,46 +88,53 @@ class PresenceController extends Controller
             }
         }
 
-        // Ottieni tutti i progetti dell'utente (per il select del filtro)
-        $userProjects = $this->user->projects()->pluck('projects.id');
+        $validFilter = $projectFilter && \App\Models\Project::where('id', (int) $projectFilter)
+            ->where('active', true)->exists()
+            ? (int) $projectFilter
+            : null;
 
-        // Se c'è un filtro attivo, mostra solo i colleghi di quel progetto specifico
-        // Altrimenti mostra i colleghi di tutti i progetti
-        if ($projectFilter && $userProjects->contains((int) $projectFilter)) {
-            $activeProjectIds = collect([(int) $projectFilter]);
+        $colleaguesQuery = \App\Models\User::where('id', '!=', $this->user->id);
+
+        if ($validFilter) {
+            $teamId = $this->user->team_id;
+            $colleaguesQuery->where(function ($q) use ($validFilter, $teamId) {
+                $q->whereHas('projects', function ($q2) use ($validFilter) {
+                    $q2->where('projects.id', $validFilter);
+                });
+                if ($teamId) {
+                    $q->orWhere(function ($q2) use ($teamId) {
+                        $q2->where('team_id', $teamId)
+                           ->whereDoesntHave('projects');
+                    });
+                }
+            });
+        } elseif ($this->user->team_id) {
+            $colleaguesQuery->where('team_id', $this->user->team_id);
         } else {
-            $activeProjectIds = $userProjects;
-            $projectFilter = null; // resetta se il valore non è valido
+            $colleaguesQuery->where('allow_view', true);
         }
 
-        // Ottieni colleghi negli stessi progetti, con il loro ruolo per progetto
-        // PUNTO 3: withPivot('role') caricato su projects per mostrare il ruolo
-        $colleagues = \App\Models\User::whereHas('projects', function($query) use ($activeProjectIds) {
-            $query->whereIn('projects.id', $activeProjectIds);
-        })
-        ->where('id', '!=', $this->user->id)
-        ->with([
-            'presences' => function($query) {
-                $query->where('date', '>=', now()->startOfYear()->format('Y-m-d'))
-                    ->where('date', '<=', now()->addYear()->endOfYear()->format('Y-m-d'));
-            },
-            // PUNTO 3: carica i progetti con il ruolo pivot per mostrarlo nel tooltip
-            'projects' => function($query) use ($activeProjectIds) {
-                $query->whereIn('projects.id', $activeProjectIds)
-                    ->withPivot('role');
-            }
-        ])
-        ->get();
+        $colleagues = $colleaguesQuery
+            ->with([
+                'presences' => function ($query) {
+                    $query->where('date', '>=', now()->startOfYear()->format('Y-m-d'))
+                          ->where('date', '<=', now()->addYear()->endOfYear()->format('Y-m-d'));
+                },
+                'projects' => function ($query) use ($validFilter) {
+                    if ($validFilter) {
+                        $query->where('projects.id', $validFilter);
+                    }
+                    $query->withPivot('role');
+                },
+            ])
+            ->get();
 
-        // ------------------------------------------------------------------
-        // PUNTO 1: Raggruppa le presenze dei colleghi per data e per status
-        // invece di creare un evento per ogni persona (che affollava il calendario),
-        // creiamo UN evento aggregato per giorno per tipo di presenza.
-        // ------------------------------------------------------------------
-        $byDate = []; // [ 'YYYY-MM-DD' => [ 'ferie' => [...], 'smart_working' => [...], 'presente' => [...] ] ]
+        $projectFilter = $validFilter;
+
+
+        $byDate = []; 
 
         foreach ($colleagues as $colleague) {
-            // PUNTO 3: determina il ruolo del collega nel primo progetto comune
             $sharedProject = $colleague->projects->first();
             $role = $sharedProject ? ($sharedProject->pivot->role ?? 'member') : 'member';
 
@@ -135,7 +142,6 @@ class PresenceController extends Controller
                 $dateStr = $presence->date;
                 $status  = $presence->status;
 
-                // Normalizza ferie e permesso nello stesso bucket per il calendario
                 $bucket = ($status === 'permesso') ? 'ferie' : $status;
 
                 if (!isset($byDate[$dateStr][$bucket])) {
@@ -208,7 +214,7 @@ class PresenceController extends Controller
             'events'          => $events,
             'holidays'        => $holidayEvents,
             'colleagueEvents' => $colleagueEvents,
-            'activeProjectIds' => $activeProjectIds, // per evidenziare il filtro attivo
+            'projectFilter' => $validFilter,
         ]);
     }
 
