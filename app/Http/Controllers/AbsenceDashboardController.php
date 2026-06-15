@@ -44,25 +44,42 @@ class AbsenceDashboardController extends Controller
             }
         }
         
-        $projectsQuery = $user->projects()
-            ->where('active', true)
+        $canSeeAll = $user->superuser || $user->is_project_manager;
+
+        if ($projectFilter) {
+            $pid = (int) $projectFilter;
+            if ($canSeeAll) {
+                $validFilter = \App\Models\Project::where('id', $pid)->where('active', true)->exists()
+                    ? $pid : null;
+            } else {
+                $validFilter = $user->projects()->where('projects.id', $pid)->where('active', true)->exists()
+                    ? $pid : null;
+            }
+        } else {
+            $validFilter = null;
+        }
+        $projectFilter = $validFilter;
+
+        if ($canSeeAll) {
+            $baseQuery = \App\Models\Project::where('active', true);
+        } else {
+            $baseQuery = $user->projects()->where('active', true);
+        }
+
+        $projectsQuery = (clone $baseQuery)
             ->withCount('users')
             ->with('users');
 
-        // ✅ Se c'è filtro progetto, prendi solo quello
         if ($projectFilter) {
             $projectsQuery->where('projects.id', $projectFilter);
         }
 
         $projects = $projectsQuery->get();
 
-        // ✅ Lista completa per dropdown (non filtrata)
-        $allUserProjects = $user->projects()
-            ->where('active', true)
+        $allUserProjects = (clone $baseQuery)
             ->orderBy('name')
             ->get();
         
-        // Statistiche globali
         $globalStats = [
             'total_projects' => $projects->count(),
             'total_users' => $projects->sum('users_count'),

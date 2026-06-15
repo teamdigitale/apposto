@@ -54,7 +54,9 @@
                                 <i class="bi bi-briefcase"></i> Progetto
                             </label>
                             <select name="project_id" class="form-select">
-                                <option value="">Tutti i miei progetti</option>
+                                <option value="">
+                                    {{ (auth()->user()->superuser || auth()->user()->is_project_manager) ? 'Tutti i progetti' : 'Tutti i miei progetti' }}
+                                </option>
                                 @foreach($allUserProjects as $proj)
                                     <option value="{{ $proj->id }}" {{ $projectFilter == $proj->id ? 'selected' : '' }}>
                                         {{ $proj->name }}
