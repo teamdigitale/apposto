@@ -18,7 +18,18 @@
                     @endif
                 </div>
                 
-                <div>
+                <div class="text-end">
+                    @php
+                        $canEditProject = auth()->user()->superuser ||
+                            (auth()->user()->is_project_manager &&
+                             auth()->user()->projects()->wherePivot('role','manager')->where('projects.id',$project->id)->exists());
+                    @endphp
+                    @if($canEditProject)
+                        <a href="{{ route('projects.edit', $project->id) }}" class="btn btn-sm btn-outline-primary mb-2">
+                            <i class="bi bi-pencil-square"></i> Modifica Progetto
+                        </a>
+                        <br>
+                    @endif
                     @if($isMember)
                         <span class="badge bg-success"><i class="bi bi-check-circle"></i> Fai parte del team</span>
                     @else
@@ -39,7 +50,7 @@
                             <div class="text-center p-3 border-end">
                                 <i class="bi bi-people-fill" style="font-size: 2rem; color: #0d6efd;"></i>
                                 <h3 class="mb-0 mt-2">{{ $project->users->count() }}</h3>
-                                <small class="text-muted">{{ Str::plural('Membro', $project->users->count()) }}</small>
+                                <small class="text-muted">Membri</small>
                             </div>
                         </div>
                         

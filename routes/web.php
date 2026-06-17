@@ -80,6 +80,10 @@ Route::middleware('auth')->group(function () {
         ->name('projectRequests.reject');
 
     Route::get('/projects', [ProjectMembershipController::class, 'index'])->name('projects.index');
+    Route::get('/projects/create', [ProjectMembershipController::class, 'create'])->name('projects.create');
+    Route::post('/projects', [ProjectMembershipController::class, 'store'])->name('projects.store');
+    Route::get('/projects/{project}/edit', [ProjectMembershipController::class, 'edit'])->name('projects.edit');
+    Route::patch('/projects/{project}', [ProjectMembershipController::class, 'update'])->name('projects.update');
     Route::get('/projects/{project}', [ProjectMembershipController::class, 'show'])->name('projects.show');
     Route::get('/projects/{project}/join/{role}', [ProjectMembershipController::class, 'joinSimple'])->name('projects.join.simple');
     Route::post('/projects/{project}/join', [ProjectMembershipController::class, 'join'])->name('projects.join');

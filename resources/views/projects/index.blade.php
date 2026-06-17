@@ -2,9 +2,16 @@
 <div class="container mt-4">
     <!-- Header -->
     <div class="row mb-4">
-        <div class="col-md-12">
-            <h2>I Miei Progetti</h2>
-            <p class="text-muted">Gestisci i progetti a cui lavori</p>
+        <div class="col-md-12 d-flex justify-content-between align-items-start">
+            <div>
+                <h2>I Miei Progetti</h2>
+                <p class="text-muted">Gestisci i progetti a cui lavori</p>
+            </div>
+            @if(auth()->user()->superuser || auth()->user()->is_project_manager)
+                <a href="{{ route('projects.create') }}" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Nuovo Progetto
+                </a>
+            @endif
         </div>
     </div>
 

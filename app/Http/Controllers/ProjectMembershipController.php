@@ -246,8 +246,110 @@ class ProjectMembershipController extends Controller
             'role'       => $validated['role'],
             'updated_at' => now(),
         ]);
+        $val = $validated['role'] === 'member' ? '' : "di {$validated['role']}";
 
-        return back()->with('success', "Ruolo di {$member->name} aggiornato a \"{$validated['role']}\" con successo!");
+        return back()->with('success', "Ruolo di {$member->name} aggiornato a {$val}.");
+    }
+
+    private function canManageProjects(): bool
+    {
+        $user = Auth::user();
+        return $user->superuser || $user->is_project_manager;
+    }
+
+    private function canManageThisProject(Project $project): bool
+    {
+        $user = Auth::user();
+
+        if ($user->superuser) {
+            return true;
+        }
+
+        if ($user->is_project_manager) {
+            return $user->projects()
+                ->wherePivot('role', 'manager')
+                ->where('projects.id', $project->id)
+                ->exists();
+        }
+
+        return false;
+    }
+
+    public function create()
+    {
+        if (!$this->canManageProjects()) {
+            abort(403, 'Non hai i permessi per creare progetti.');
+        }
+
+        return view('projects.create');
+    }
+
+    public function store(Request $request)
+    {
+        if (!$this->canManageProjects()) {
+            abort(403, 'Non hai i permessi per creare progetti.');
+        }
+
+        $validated = $request->validate([
+            'name'               => 'required|string|max:255',
+            'description'        => 'nullable|string',
+            'start_date'         => 'nullable|date',
+            'end_date'           => 'nullable|date|after_or_equal:start_date',
+            'active'             => 'boolean',
+            'slack_channel'      => 'nullable|url|max:500',
+            'drive_folder'       => 'nullable|url|max:500',
+            'documentation_url'  => 'nullable|url|max:500',
+            'resources_notes'    => 'nullable|string',
+        ]);
+
+        $validated['active'] = $request->boolean('active', true);
+
+        $project = Project::create($validated);
+
+        $user = Auth::user();
+        $user->projects()->attach($project->id, [
+            'role'       => 'manager',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->route('projects.show', $project->id)
+            ->with('success', "Progetto \"{$project->name}\" creato con successo!");
+    }
+
+    public function edit(Project $project)
+    {
+        if (!$this->canManageThisProject($project)) {
+            abort(403, 'Non hai i permessi per modificare questo progetto.');
+        }
+
+        return view('projects.edit', compact('project'));
+    }
+
+    public function update(Request $request, Project $project)
+    {
+        if (!$this->canManageThisProject($project)) {
+            abort(403, 'Non hai i permessi per modificare questo progetto.');
+        }
+
+        $validated = $request->validate([
+            'name'               => 'required|string|max:255',
+            'description'        => 'nullable|string',
+            'start_date'         => 'nullable|date',
+            'end_date'           => 'nullable|date|after_or_equal:start_date',
+            'active'             => 'boolean',
+            'slack_channel'      => 'nullable|url|max:500',
+            'drive_folder'       => 'nullable|url|max:500',
+            'documentation_url'  => 'nullable|url|max:500',
+            'resources_notes'    => 'nullable|string',
+        ]);
+
+        $validated['active'] = $request->boolean('active', true);
+
+        $project->update($validated);
+
+        return redirect()->route('projects.show', $project->id)
+            ->with('success', "Progetto \"{$project->name}\" aggiornato con successo!");
     }
 
 }
