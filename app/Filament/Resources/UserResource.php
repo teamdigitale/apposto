@@ -56,8 +56,6 @@ class UserResource extends Resource
                     Forms\Components\TextInput::make('phone'),    
                 Forms\Components\Toggle::make('allow_view')
                     ->required()->label('Condivide Info'),    
-                Forms\Components\Toggle::make('gestiamopresenze')
-                    ->required()->label('Gestiamo presenze'),
                 Forms\Components\Toggle::make('superuser')
                     ->label('Super Admin'),
                 Forms\Components\Toggle::make('is_project_manager')
@@ -101,11 +99,7 @@ class UserResource extends Resource
                     ->label('Super Admin')
                     ->boolean(),
                 Tables\Columns\IconColumn::make('is_project_manager')
-                    ->label('Proj. Manager')
-                    ->boolean()
-                    ->boolean()->label('Super User'),
-                Tables\Columns\IconColumn::make('gestiamopresenze')
-                    ->boolean()->label('Timesheet'),
+                    ->boolean()->label('Proj. Manager'),
                 Tables\Columns\TextColumn::make('ferie_totali')
                     ->numeric()->label('Assenze Tot'),
                 Tables\Columns\TextColumn::make('ferie_usate')

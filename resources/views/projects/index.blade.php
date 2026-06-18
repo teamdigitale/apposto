@@ -169,6 +169,7 @@
                             <option value="developer">👨‍💻 Developer</option>
                             <option value="designer">🎨 Designer</option>
                             <option value="tester">🧪 Tester</option>
+                            <option value="manager">📊 Manager</option>
                             <option value="product owner">📋 Product Owner</option>
                             <option value="scrum master">🔄 Scrum Master</option>
                             <option value="member">👤 Member (generico)</option>

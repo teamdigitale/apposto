@@ -168,8 +168,7 @@
             </div>
         </div>
 
-        <!-- Grafici e Statistiche Avanzate -->
-         @if(Auth::user()->superuser)
+         @if(Auth::user()->superuser || Auth::user()->is_project_manager)
             <div class="row mb-4">
                 <div class="col-md-12">
                     <div class="card">
