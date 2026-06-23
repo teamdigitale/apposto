@@ -57,11 +57,7 @@ class UserResource extends Resource
                 Forms\Components\Toggle::make('allow_view')
                     ->required()->label('Condivide Info'),    
                 Forms\Components\Toggle::make('superuser')
-                    ->label('Super Admin'),
-                Forms\Components\Toggle::make('is_project_manager')
-                    ->label('Project Manager (gestisce richieste dei propri progetti)')
-                    ->helperText('Può approvare/rifiutare richieste solo per i progetti in cui ha ruolo manager')
-                    ->required()->label('Super User'),
+                    ->label('Project Manager'),
                 Forms\Components\Toggle::make('addetto_emergenza')
                     ->label('Add Emergenza/Antincendio'),
                 Forms\Components\Toggle::make('addetto_al_primo_soccorso')
@@ -96,7 +92,7 @@ class UserResource extends Resource
                 Tables\Columns\IconColumn::make('allow_view')
                     ->boolean()->label('Condivide Info'),
                 Tables\Columns\IconColumn::make('superuser')
-                    ->label('Super Admin')
+                    ->label('Project Manager')
                     ->boolean(),
                 Tables\Columns\IconColumn::make('is_project_manager')
                     ->boolean()->label('Proj. Manager'),
