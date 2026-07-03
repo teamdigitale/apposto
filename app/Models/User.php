@@ -14,14 +14,8 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
-    use SoftDeletes;
+    use HasFactory, Notifiable, SoftDeletes;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'name',
         'email',
@@ -39,30 +33,25 @@ class User extends Authenticatable
         'is_project_manager',
         'addetto_emergenza',
         'addetto_al_primo_soccorso',
-        'ruolo'
+        'ruolo',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function setEmailAttribute($value): void
+    {
+        $this->attributes['email'] = strtolower(trim($value));
     }
 
     public function team()
@@ -73,13 +62,12 @@ class User extends Authenticatable
     public function bookings_active()
     {
         $today = Carbon::today();
-        $prenotazione_ultima = $this->hasMany(Booking::class)
-           ->where('status','=','0')
+
+        return $this->hasMany(Booking::class)
+            ->where('status', '=', '0')
             ->where('from_date', '<=', $today)
-            ->where('to_date', '>=', $today);
-        
-        return $prenotazione_ultima->with('desk');
-        
+            ->where('to_date', '>=', $today)
+            ->with('desk');
     }
 
     public function sendPasswordResetNotification($token): void
@@ -89,13 +77,7 @@ class User extends Authenticatable
 
     public function getEmailAttribute($value)
     {
-        //print($value);
         return strtolower($value);
-    }
-    
-    public function setEmailAttribute($value)
-    {
-        $this->attributes['email'] = strtolower($value);
     }
 
     public function defaultWorkstation()
@@ -117,12 +99,13 @@ class User extends Authenticatable
 
     public function getFerieUsateAttribute()
     {
-        return $this->presences()->where('status', 'ferie')->count();
+        return $this->presences()
+            ->where('status', 'ferie')
+            ->count();
     }
 
     public function getRemainingLeaveDaysAttribute()
     {
         return $this->ferie_totali - $this->ferie_usate;
     }
-
 }
