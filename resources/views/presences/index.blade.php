@@ -31,6 +31,15 @@
     text-overflow: ellipsis;
     opacity: 0.92;
 }
+.fc .fc-daygrid-day-top {
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+}
+
+.fc .fc-daygrid-day-number {
+    margin-left: 1rem;
+    margin-right: auto;
+}
 </style>
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/main.min.css' rel='stylesheet' />
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/index.global.min.js'></script>
