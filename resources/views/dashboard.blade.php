@@ -1,6 +1,6 @@
 @extends('bootstrap-italia::page')
 
-@section('title', 'Bootstrap Italia')
+@section('title', 'Apposto - Dashboard')
 
 @section('content')
 <div class="container">
