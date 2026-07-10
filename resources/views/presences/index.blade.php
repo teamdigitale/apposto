@@ -23,6 +23,14 @@
     font-weight: 600;
 }
 /* Colleghi aggregati */
+.fc-event-sede {
+    display: block;
+    font-size: 0.72em;
+    opacity: 0.85;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .fc-event-colleague {
     padding: 1px 4px;
     font-size: 0.78em;
@@ -188,10 +196,28 @@
                             <label for="status" class="form-label fw-bold">
                                 <i class="bi bi-list-check"></i> Tipo Presenza
                             </label>
-                            <select id="status" name="status" class="form-select form-select-lg">
+                            <select id="status" name="status" class="form-select form-select-lg"
+                                    onchange="toggleSedeSelect(this.value)">
                                 <option value="ferie">🚫 Assenza</option>
                                 <option value="presente">🏢 Presente in Ufficio</option>
                                 <option value="smart_working">💻 Smart Working</option>
+                            </select>
+                        </div>
+
+                        {{-- Select sede: visibile solo se status = presente --}}
+                        <div class="mb-3" id="sede-select-wrapper" style="display:none;">
+                            <label for="workplace_id" class="form-label fw-bold">
+                                <i class="bi bi-geo-alt"></i> Sede
+                                <small class="text-muted fw-normal">(opzionale)</small>
+                            </label>
+                            <select id="workplace_id" name="workplace_id" class="form-select">
+                                <option value="">— Seleziona la sede —</option>
+                                @foreach(\App\Models\Workplace::orderBy('name')->get() as $wp)
+                                    <option value="{{ $wp->id }}">
+                                        {{ $wp->name }}
+                                        @if($wp->address) — {{ $wp->address }} @endif
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
 
@@ -312,10 +338,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const status = props.status || arg.event.title;
             const icon   = icons[status] || { svg: '😊', label: status };
 
+            const workplace = arg.event.extendedProps.workplaceName;
+            const workplaceHtml = (status === 'presente' && workplace)
+                ? `<span class="fc-event-sede" title="${arg.event.extendedProps.workplaceAddr || workplace}">📍${workplace}</span>`
+                : '';
             return {
-                html: `<div class="fc-event-own" title="${icon.label}">
+                html: `<div class="fc-event-own" title="${icon.label}${workplace ? ' — ' + workplace : ''}">
                     <span class="fc-event-icon">${icon.svg}</span>
                     <span class="fc-event-label">${icon.label}</span>
+                    ${workplaceHtml}
                 </div>`
             };
         },
@@ -386,9 +417,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         'smart_working': '💻 Smart W.',
                         'presente':      '🏢 Presente',
                     }[u.status] || u.status;
-                    // PUNTO 3: mostra il ruolo nel progetto
                     const roleLabel = u.role ? `<span class="badge bg-secondary ms-1">${u.role}</span>` : '';
-                    return `<tr><td><strong>${u.name}</strong>${roleLabel}</td><td>${statusLabel}</td></tr>`;
+                    const sedeLabel = (u.status === 'presente' && u.workplaceName)
+                        ? `<small class="text-muted d-block">📍 ${u.workplaceName}</small>`
+                        : '';
+                    return `<tr><td><strong>${u.name}</strong>${roleLabel}${sedeLabel}</td><td>${statusLabel}</td></tr>`;
                 }).join('');
 
                 document.getElementById('modal-colleghi-titolo').textContent = `${bucketLabel} — ${date}`;
@@ -436,11 +469,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             
             // ✅ FIX: Testo specifico in base al tipo
+            const workplaceInfo = info.event.extendedProps.workplaceName
+                ? `\nSede: 📍 ${info.event.extendedProps.workplaceName}` : '';
             const messages = {
                 'ferie': `Assenza del ${formatDate(eventDate)}\n\nVuoi eliminare questa assenza?`,
                 'permesso': `Permesso del ${formatDate(eventDate)}\n\nVuoi eliminare questo permesso?`,
                 'smart_working': `Smart Working del ${formatDate(eventDate)}\n\nVuoi eliminare questo smart working?`,
-                'presente': `Presenza in ufficio del ${formatDate(eventDate)}\n\nVuoi eliminare questa presenza?`
+                'presente': `Presenza in ufficio del ${formatDate(eventDate)}${workplaceInfo}\n\nVuoi eliminare questa presenza?`
             };
             
             const message = messages[eventStatus] || `Presenza del ${formatDate(eventDate)}\n\nVuoi eliminare?`;
@@ -585,6 +620,11 @@ document.addEventListener('DOMContentLoaded', function () {
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvataggio...';
 
+        // Leggi la sede se l'utente l'ha selezionata (solo per presenti)
+        const workplaceId = (status === 'presente')
+            ? (document.getElementById('workplace_id')?.value || null)
+            : null;
+
         // Invia richiesta
         fetch("{{ route('presences.store') }}", {
             method: 'POST',
@@ -593,9 +633,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
             body: JSON.stringify({
-                start_date: startDate,
-                end_date: endDate,
-                status: status
+                start_date:   startDate,
+                end_date:     endDate,
+                status:       status,
+                workplace_id: workplaceId || undefined, // non inviare se null
             })
         })
         .then(response => response.json())
@@ -899,6 +940,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     
+    // Mostra/nasconde il select sede in base al tipo presenza
+    window.toggleSedeSelect = function(status) {
+        const wrapper = document.getElementById('sede-select-wrapper');
+        const sel = document.getElementById('workplace_id');
+        if (status === 'presente') {
+            wrapper.style.display = 'block';
+        } else {
+            wrapper.style.display = 'none';
+            if (sel) sel.value = '';
+        }
+    };
+
     // Carica grafici al load della pagina
     loadCharts();
 

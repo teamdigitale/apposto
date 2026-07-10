@@ -35,6 +35,8 @@ class PresenceRelationManager extends RelationManager
                         'permesso' => 'danger',
                         default => 'gray',
                     }),
+                TextColumn::make('workplace.name')->label('Sede'),
+                TextColumn::make('booking.desk.identifier')->label('Postazione'),
             ])
             ->defaultSort('date', 'desc')
             ->bulkActions([

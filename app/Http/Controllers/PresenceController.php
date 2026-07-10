@@ -24,9 +24,10 @@ class PresenceController extends Controller
     public function index(Request $request)
     {
         $projectFilter = $request->input('project_filter');
-        
-        $presencesQuery = $this->user->presences();
-        $presences = $presencesQuery->get();
+
+        $presences = $this->user->presences()
+            ->with(['workplace', 'booking.desk.plan.workplace'])
+            ->get();
 
         $events = $presences->map(function($presence) {
             switch($presence->status) {
@@ -47,14 +48,25 @@ class PresenceController extends Controller
                     $icon = ''; $title = ucfirst($presence->status);
                     $bgColor = '#6c757d'; $borderColor = '#5a6268';
             }
+
+            $workplace = ($presence->status === 'presente')
+                ? ($presence->workplace ?? $presence->booking?->desk?->plan?->workplace)
+                : null;
+
             return [
-                'title' => $title,
-                'start' => $presence->date,
-                'status' => $presence->status,
+                'title'           => $title,
+                'start'           => $presence->date,
+                'status'          => $presence->status,
                 'backgroundColor' => $bgColor,
-                'borderColor' => $borderColor,
-                'textColor' => '#fff',
-                'extendedProps' => ['type' => 'own', 'status' => $presence->status, 'icon' => $icon]
+                'borderColor'     => $borderColor,
+                'textColor'       => '#fff',
+                'extendedProps'   => [
+                    'type'          => 'own',
+                    'status'        => $presence->status,
+                    'icon'          => $icon,
+                    'workplaceName' => $workplace?->name,
+                    'workplaceAddr' => $workplace?->address,
+                ]
             ];
         });
 
@@ -72,11 +84,6 @@ class PresenceController extends Controller
             }
         }
 
-        // ------------------------------------------------------------------
-        // VALIDAZIONE FILTRO PROGETTO
-        // superuser/PM → qualsiasi progetto attivo
-        // utente base  → solo progetti a cui è allocato
-        // ------------------------------------------------------------------
         $validFilter = null;
         if ($projectFilter) {
             $pid = (int) $projectFilter;
@@ -90,28 +97,15 @@ class PresenceController extends Controller
             }
         }
 
-        // ------------------------------------------------------------------
-        // QUERY COLLEGHI
-        //
-        // Filtro progetto ATTIVO → solo i membri di quel progetto specifico.
-        //   NON aggiungere chi "non ha progetti" — se filtri per progetto
-        //   vuoi vedere solo le persone di quel progetto.
-        //
-        // "Tutti i progetti" (filtro null) → tutto il team (come PresenceOverview)
-        //   + fallback su allow_view se l'utente non ha team_id.
-        // ------------------------------------------------------------------
         $colleaguesQuery = \App\Models\User::where('id', '!=', $this->user->id);
 
         if ($validFilter) {
-            // Solo i membri del progetto selezionato — nessun orWhere aggiuntivo
             $colleaguesQuery->whereHas('projects', function ($q) use ($validFilter) {
                 $q->where('projects.id', $validFilter);
             });
         } elseif ($this->user->team_id) {
-            // "Tutti i progetti": tutto il team (stesso criterio di PresenceOverview)
             $colleaguesQuery->where('team_id', $this->user->team_id);
         } else {
-            // Fallback: utenti con allow_view
             $colleaguesQuery->where('allow_view', true);
         }
 
@@ -119,30 +113,22 @@ class PresenceController extends Controller
             ->with([
                 'presences' => function ($query) {
                     $query->where('date', '>=', now()->startOfYear()->format('Y-m-d'))
-                          ->where('date', '<=', now()->addYear()->endOfYear()->format('Y-m-d'));
+                          ->where('date', '<=', now()->addYear()->endOfYear()->format('Y-m-d'))
+                          ->with(['workplace', 'booking.desk.plan.workplace']);
                 },
-                // Carica TUTTI i progetti del collega con il ruolo pivot,
-                // non solo quello filtrato — così il tooltip mostra il ruolo reale
                 'projects' => function ($query) {
                     $query->withPivot('role');
                 },
             ])
             ->get();
 
-        // ------------------------------------------------------------------
-        // RUOLO NEL TOOLTIP (PUNTO 3)
-        // Se c'è un filtro attivo: mostra il ruolo in quel progetto specifico
-        // Altrimenti: mostra il ruolo nel primo progetto comune col loggato
-        // ------------------------------------------------------------------
         $userProjectIds = $this->user->projects()->pluck('projects.id');
 
         $byDate = [];
         foreach ($colleagues as $colleague) {
             if ($validFilter) {
-                // Ruolo nel progetto filtrato
                 $proj = $colleague->projects->firstWhere('id', $validFilter);
             } else {
-                // Primo progetto in comune con l'utente loggato
                 $proj = $colleague->projects->first(function ($p) use ($userProjectIds) {
                     return $userProjectIds->contains($p->id);
                 }) ?? $colleague->projects->first();
@@ -157,10 +143,17 @@ class PresenceController extends Controller
                 if (!isset($byDate[$dateStr][$bucket])) {
                     $byDate[$dateStr][$bucket] = [];
                 }
+
+                $workplace = ($status === 'presente')
+                    ? ($presence->workplace ?? $presence->booking?->desk?->plan?->workplace)
+                    : null;
+
                 $byDate[$dateStr][$bucket][] = [
-                    'name'   => $colleague->name,
-                    'status' => $status,
-                    'role'   => $role,
+                    'name'          => $colleague->name,
+                    'status'        => $status,
+                    'role'          => $role,
+                    'workplaceName' => $workplace?->name,
+                    'workplaceAddr' => $workplace?->address,
                 ];
             }
         }
@@ -194,11 +187,11 @@ class PresenceController extends Controller
         }
 
         return view('presences.index', [
-            'presences'       => $presences,
-            'events'          => $events,
-            'holidays'        => $holidayEvents,
+            'presences'     => $presences,
+            'events'        => $events,
+            'holidays'      => $holidayEvents,
             'colleagueEvents' => $colleagueEvents,
-            'projectFilter'   => $validFilter,
+            'projectFilter' => $validFilter,
         ]);
     }
 
@@ -207,34 +200,26 @@ class PresenceController extends Controller
      */
     public function getStats(Request $request)
     {
-        $year = $request->input('year', now()->year);
+        $year  = $request->input('year', now()->year);
         $month = $request->input('month', now()->month);
-        
+
         $startDate = Carbon::create($year, $month, 1)->startOfMonth();
-        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
-        
+        $endDate   = Carbon::create($year, $month, 1)->endOfMonth();
+
         $stats = Presence::where('user_id', $this->user->id)
             ->whereBetween('date', [$startDate, $endDate])
             ->selectRaw('status, COUNT(*) as count')
-            ->groupBy('status')
-            ->get()
-            ->pluck('count', 'status')
-            ->toArray();
-        
+            ->groupBy('status')->get()->pluck('count', 'status')->toArray();
+
         $trend = [];
         for ($i = 5; $i >= 0; $i--) {
             $monthDate  = now()->subMonths($i);
             $monthStart = $monthDate->copy()->startOfMonth();
             $monthEnd   = $monthDate->copy()->endOfMonth();
-            
             $monthStats = Presence::where('user_id', $this->user->id)
                 ->whereBetween('date', [$monthStart, $monthEnd])
                 ->selectRaw('status, COUNT(*) as count')
-                ->groupBy('status')
-                ->get()
-                ->pluck('count', 'status')
-                ->toArray();
-            
+                ->groupBy('status')->get()->pluck('count', 'status')->toArray();
             $trend[] = [
                 'month'         => $monthDate->format('M Y'),
                 'ferie'         => $monthStats['ferie'] ?? 0,
@@ -243,26 +228,21 @@ class PresenceController extends Controller
                 'presente'      => $monthStats['presente'] ?? 0,
             ];
         }
-        
+
         $yearStart = Carbon::create($year, 1, 1);
         $yearEnd   = Carbon::create($year, 12, 31);
-        
         $yearStats = Presence::where('user_id', $this->user->id)
             ->whereBetween('date', [$yearStart, $yearEnd])
             ->selectRaw('status, COUNT(*) as count')
-            ->groupBy('status')
-            ->get()
-            ->pluck('count', 'status')
-            ->toArray();
-        
+            ->groupBy('status')->get()->pluck('count', 'status')->toArray();
+
         $totalDays   = array_sum($yearStats);
+        $workDays    = ($yearStats['presente'] ?? 0) + ($yearStats['smart_working'] ?? 0);
+        $absenceDays = ($yearStats['ferie'] ?? 0) + ($yearStats['permesso'] ?? 0);
         $percentages = [];
         foreach ($yearStats as $status => $count) {
             $percentages[$status] = $totalDays > 0 ? round(($count / $totalDays) * 100, 1) : 0;
         }
-        
-        $workDays    = ($yearStats['presente'] ?? 0) + ($yearStats['smart_working'] ?? 0);
-        $absenceDays = ($yearStats['ferie'] ?? 0) + ($yearStats['permesso'] ?? 0);
 
         return response()->json([
             'current_month' => $stats,
@@ -286,15 +266,16 @@ class PresenceController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'start_date' => 'required|date',
-            'end_date'   => 'required|date|after_or_equal:start_date',
-            'status'     => 'required|in:presente,ferie,smart_working',
+            'start_date'   => 'required|date',
+            'end_date'     => 'required|date|after_or_equal:start_date',
+            'status'       => 'required|in:presente,ferie,smart_working',
+            'workplace_id' => 'nullable|exists:workplaces,id',
         ]);
-    
+
         $user = $this->user;
         $startDate = Carbon::parse($validated['start_date']);
         $endDate   = Carbon::parse($validated['end_date']);
-        
+
         $dates = [];
         $currentDate = $startDate->copy();
         while ($currentDate->lte($endDate)) {
@@ -303,7 +284,7 @@ class PresenceController extends Controller
             }
             $currentDate->addDay();
         }
-        
+
         if (empty($dates)) {
             return response()->json(['message' => 'Nessun giorno lavorativo nel periodo selezionato', 'dates' => []], 422);
         }
@@ -312,15 +293,12 @@ class PresenceController extends Controller
             $timezone   = config('app.timezone', 'Europe/Rome');
             $start_time = "07:30";
             $end_time   = "21:00";
-            
+
             foreach ($dates as $date) {
-                Presence::updateOrCreate(
-                    ['user_id' => $user->id, 'date' => $date],
-                    ['status'  => $validated['status']]
-                );
-        
+                $booking = null;
+
                 if ($validated['status'] === 'presente' && $user->default_workstation_id) {
-                    Booking::updateOrCreate(
+                    $booking = Booking::updateOrCreate(
                         ['user_id' => $user->id, 'start_date' => $date],
                         [
                             'desk_id'    => $user->default_workstation_id,
@@ -333,8 +311,21 @@ class PresenceController extends Controller
                         ]
                     );
                 } else {
-                    Booking::where('user_id', $user->id)->where('start_date', $date)->update(['status' => 1]);
+                    Booking::where('user_id', $user->id)
+                        ->where('start_date', $date)
+                        ->update(['status' => 1]);
                 }
+
+                Presence::updateOrCreate(
+                    ['user_id' => $user->id, 'date' => $date],
+                    [
+                        'status'       => $validated['status'],
+                        'booking_id'   => $booking?->id,
+                        'workplace_id' => $validated['status'] === 'presente'
+                            ? ($validated['workplace_id'] ?? null)
+                            : null,
+                    ]
+                );
             }
         });
 
@@ -343,13 +334,13 @@ class PresenceController extends Controller
 
     public function destroySimple($date)
     {
-        $user = $this->user;
+        $user    = $this->user;
         $deleted = Presence::where('user_id', $user->id)->where('date', $date)->delete();
         if ($deleted) {
             Booking::where('user_id', $user->id)->where('start_date', $date)->update(['status' => 1]);
         }
         return redirect()->route('presences.index')
-            ->with('success', 'Presenza del ' . \Carbon\Carbon::parse($date)->format('d/m/Y') . ' eliminata!');
+            ->with('success', 'Presenza del ' . Carbon::parse($date)->format('d/m/Y') . ' eliminata!');
     }
 
     public function destroy(Request $request)
@@ -357,14 +348,14 @@ class PresenceController extends Controller
         $validated = $request->validate(['date' => 'required|date']);
         $user = $this->user;
         $date = $validated['date'];
-        
+
         $deleted = Presence::where('user_id', $user->id)->where('date', $date)->delete();
-        
+
         if ($deleted) {
             Booking::where('user_id', $user->id)->where('start_date', $date)->update(['status' => 1]);
             return response()->json(['success' => true, 'message' => 'Presenza eliminata con successo']);
         }
-        
+
         return response()->json(['success' => false, 'message' => 'Presenza non trovata'], 404);
     }
 }

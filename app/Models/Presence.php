@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Presence extends Model
 {
-    protected $fillable = ['user_id', 'booking_id', 'date', 'status' ];
+    protected $fillable = ['user_id', 'booking_id', 'date', 'status', 'workplace_id'];
 
     public function user()
     {
@@ -16,5 +16,16 @@ class Presence extends Model
     public function booking()
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    public function workplace()
+    {
+        return $this->belongsTo(Workplace::class);
+    }
+
+    public function getResolvedWorkplaceAttribute()
+    {
+        return $this->workplace
+            ?? $this->booking?->desk?->plan?->workplace;
     }
 }
