@@ -2,11 +2,42 @@
     <div class="container">
         <h2>Foglio presenze – {{ \Carbon\Carbon::parse($month)->translatedFormat('F Y') }}</h2>
 
-        <form method="GET" action="{{ route('presences.overview') }}" class="mb-4">
-            <label for="month" class="form-label">Seleziona mese:</label>
-            <input type="month" name="month" id="month" value="{{ $month }}" class="form-control" style="max-width: 200px; display: inline-block;">
-            <button type="submit" class="btn btn-primary ms-2">Vai</button>
-        </form>
+        <div class="d-flex flex-wrap align-items-end gap-3 mb-4">
+            {{-- Selettore mese --}}
+            <form method="GET" action="{{ route('presences.overview') }}">
+                @if($validFilter)
+                    <input type="hidden" name="project_filter" value="{{ $validFilter }}">
+                @endif
+                <label for="month" class="form-label">Seleziona mese:</label>
+                <div class="d-flex gap-2">
+                    <input type="month" name="month" id="month" value="{{ $month }}"
+                           class="form-control" style="max-width: 200px;">
+                    <button type="submit" class="btn btn-primary">Vai</button>
+                </div>
+            </form>
+
+            {{-- Filtro per progetto --}}
+            <form method="GET" action="{{ route('presences.overview') }}">
+                <input type="hidden" name="month" value="{{ $month }}">
+                <label class="form-label">Filtra per progetto:</label>
+                <div class="d-flex gap-2">
+                    <select name="project_filter" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tutti i progetti</option>
+                        @foreach($allProjects as $proj)
+                            <option value="{{ $proj->id }}" {{ $validFilter == $proj->id ? 'selected' : '' }}>
+                                {{ $proj->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @if($validFilter)
+                        <a href="{{ route('presences.overview', ['month' => $month]) }}"
+                           class="btn btn-outline-secondary text-nowrap">
+                            Rimuovi
+                        </a>
+                    @endif
+                </div>
+            </form>
+        </div>
 
         <table class="table table-bordered table-sm align-middle text-center">
             <thead>
@@ -30,7 +61,7 @@
             <tbody>
                 @foreach ($overview as $row)
                     <tr>
-                        <td>{{ $row['user']->name }}</td>
+                        <td class="text-start">{{ $row['user']->name }}</td>
                         @foreach ($row['days'] as $status)
                             <td class="text-center">
                                 @switch($status)

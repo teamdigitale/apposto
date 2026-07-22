@@ -84,6 +84,11 @@ class PresenceController extends Controller
             }
         }
 
+        // ------------------------------------------------------------------
+        // VALIDAZIONE FILTRO PROGETTO
+        // superuser → qualsiasi progetto attivo
+        // utente base → solo progetti a cui è allocato
+        // ------------------------------------------------------------------
         $validFilter = null;
         if ($projectFilter) {
             $pid = (int) $projectFilter;
@@ -97,6 +102,11 @@ class PresenceController extends Controller
             }
         }
 
+        // ------------------------------------------------------------------
+        // QUERY COLLEGHI
+        // Filtro attivo → solo membri di quel progetto
+        // Tutti i progetti → tutto il team
+        // ------------------------------------------------------------------
         $colleaguesQuery = \App\Models\User::where('id', '!=', $this->user->id);
 
         if ($validFilter) {
@@ -144,6 +154,7 @@ class PresenceController extends Controller
                     $byDate[$dateStr][$bucket] = [];
                 }
 
+                // Sede: prima workplace_id diretto, poi fallback via booking
                 $workplace = ($status === 'presente')
                     ? ($presence->workplace ?? $presence->booking?->desk?->plan?->workplace)
                     : null;
@@ -334,6 +345,11 @@ class PresenceController extends Controller
 
     public function destroySimple($date)
     {
+        if (Carbon::parse($date)->startOfDay()->lt(Carbon::today())) {
+            return redirect()->route('presences.index')
+                ->with('error', 'Non è possibile eliminare presenze di giorni precedenti ad oggi.');
+        }
+
         $user    = $this->user;
         $deleted = Presence::where('user_id', $user->id)->where('date', $date)->delete();
         if ($deleted) {
@@ -348,6 +364,13 @@ class PresenceController extends Controller
         $validated = $request->validate(['date' => 'required|date']);
         $user = $this->user;
         $date = $validated['date'];
+
+        if (Carbon::parse($date)->startOfDay()->lt(Carbon::today())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non è possibile eliminare presenze di giorni precedenti ad oggi.'
+            ], 403);
+        }
 
         $deleted = Presence::where('user_id', $user->id)->where('date', $date)->delete();
 

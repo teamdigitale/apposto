@@ -451,6 +451,16 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             
             const eventDate = info.event.startStr;
+
+            // 🚫 Blocca cancellazione per date passate
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const eventDateObj = new Date(eventDate);
+            if (eventDateObj < today) {
+                showAlert('⚠️ Non è possibile eliminare presenze di giorni precedenti ad oggi.', 'warning');
+                return;
+            }
+
             // ✅ FIX: Prendi lo status dall'extendedProps o dedurlo dal backgroundColor
             let eventStatus = info.event.extendedProps?.status;
             
