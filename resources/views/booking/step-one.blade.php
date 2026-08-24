@@ -9,7 +9,7 @@
                     
                     <h1 class="text-black" data-element="page-name">Step 1: Seleziona Sede e Date</h1>
                     <div class="hero-text">
-                        <p>In pochi step riusciarai a prenotare la tua postazione, seleziona la data</p>
+                        <p>In pochi passaggi prenoti la tua postazione. Seleziona sede, data e orario.</p>
                     </div>  
                 </div>
                 </section>
@@ -17,12 +17,15 @@
             </div>
           </div>
         </div>
+        @if(session('error'))
+            <div class="alert alert-danger">{{ session('error') }}</div>
+        @endif
         @if($errors->any())
-            @foreach($errors->all() as $error)
-                <p> {{ $error }} </p>
-            @endforeach
-        @else
-            <p></p>
+            <div class="alert alert-danger">
+                @foreach($errors->all() as $error)
+                    <p class="mb-0">{{ $error }}</p>
+                @endforeach
+            </div>
         @endif
     <form action="{{ route('booking.step.two') }}" method="POST">
         @csrf
@@ -78,7 +81,7 @@
 
                         ?>
                 <div class="select-wrapper col-4">
-                    <select id="start_time" name="start_time" class="mt-5" require>
+                    <select id="start_time" name="start_time" class="mt-5" required>
                         <option selected="" value="">Da ora</option>
                         <?php echo $array_start;?>
                     </select>
@@ -94,7 +97,7 @@
                 </div>
                 @endif
                 <div class="select-wrapper col-4">
-                    <select id="end_time" name="end_time" class="mt-5" require>
+                    <select id="end_time" name="end_time" class="mt-5" required>
                         <option selected="" value="">Ad ora</option>
                         <?php echo $array_end;?>
                     </select>
@@ -116,8 +119,6 @@
     
     @section('js')
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
-    <script> console.log('XXXXXX!');
-    </script>
     <script>
         $(document).ready(function () {
             const $startDate = $('#start_date');
@@ -176,11 +177,15 @@
                     success: function (response) {
                         if (response.available || response.can_override) {
                             $passNextButton.prop('disabled', false);
-                            $errorMessage.hide();
+                            if (response.can_override && !response.available) {
+                                const by = response.occupied_by ? ` da ${response.occupied_by}` : '';
+                                $errorMessage.text(`La postazione è occupata${by}, ma puoi prenderla per priorità.`).show();
+                            } else {
+                                $errorMessage.hide();
+                            }
                         } else {
                             $passNextButton.prop('disabled', true);
-                            const by = response.occupied_by ? ` da ${response.occupied_by}` : '';
-                            $errorMessage.text(`⚠️ Postazione occupata${by}.`).show();
+                            $errorMessage.text(response.message || 'Postazione occupata.').show();
                         }
                     },
                     error: function () {
@@ -206,7 +211,11 @@
                 form.append($('<input>', { type: 'hidden', name: '_token', value: '{{ csrf_token() }}' }));
 
                 const fields = {
-                    desk_id: $('#deskprefix').val()
+                    desk_id: $('#deskprefix').val(),
+                    start_date: $startDate.val(),
+                    end_date: multiday ? $endDate.val() : $startDate.val(),
+                    start_time: $startTime.val(),
+                    end_time: $endTime.val()
                 };
 
                 $.each(fields, function (name, value) {

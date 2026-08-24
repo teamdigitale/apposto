@@ -79,7 +79,6 @@
                                 @switch($status)
                                     @case('presente')      <span class="badge bg-success">P</span>           @break
                                     @case('ferie')         <span class="badge bg-warning text-dark">A</span> @break
-                                    @case('permesso')      <span class="badge bg-danger">Pe</span>           @break
                                     @case('smart_working') <span class="badge bg-info text-dark">SW</span>   @break
                                     @default               <span class="text-muted">—</span>
                                 @endswitch
@@ -93,11 +92,10 @@
         {{-- Legenda --}}
         <div class="d-flex align-items-center gap-3 mt-3 flex-wrap small text-muted">
             <strong>Legenda:</strong>
-            <span><span class="badge bg-success">P</span> Presente</span>
-            <span><span class="badge bg-info text-dark">SW</span> Smart Working</span>
-            <span><span class="badge bg-warning text-dark">A</span> Assenza</span>
-            <span><span class="badge bg-danger">Pe</span> Permesso</span>
-            <span><span class="text-muted">—</span> Non compilato</span>
+            <span><span class="badge bg-success ml-2">P</span> Presente</span>
+            <span><span class="badge bg-info text-dark ml-2">SW</span> Smart Working</span>
+            <span><span class="badge bg-warning text-dark ml-2">A</span> Assenza</span>
+            <span><span class="text-muted ml-2">—</span> Non compilato</span>
         </div>
 
     </div>

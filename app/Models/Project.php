@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Project extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'name',
         'description',
@@ -17,7 +20,7 @@ class Project extends Model
         'slack_channel',
         'drive_folder',
         'documentation_url',
-        'resources_notes'
+        'resources_notes',
     ];
 
     protected $casts = [
@@ -33,8 +36,8 @@ class Project extends Model
             ->withTimestamps();
     }
 
-    public function leaveRequests(): HasMany
+    public function requests(): HasMany
     {
-        return $this->hasMany(LeaveRequest::class);
+        return $this->hasMany(ProjectRequest::class);
     }
 }

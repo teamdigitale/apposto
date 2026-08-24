@@ -1,15 +1,14 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AbsenceDashboardController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\OtherController;
 use App\Http\Controllers\PresenceController;
-use App\Http\Controllers\LeaveRequestController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectMembershipController;
-use App\Http\Controllers\AbsenceDashboardController;
 use App\Http\Controllers\ProjectRequestController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
@@ -17,7 +16,6 @@ Route::get('/', function () {
 
 Route::post('/contatti/send', [OtherController::class, 'send'])->name('contact.send');
 Route::get('/contatti', [OtherController::class, 'showForm'])->name('contact.form');
-
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -33,7 +31,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('/booking', [BookingController::class, 'stepOne'])->name('booking.step.one');
-    
+
     Route::get('/booking/step-two', [BookingController::class, 'stepOne']);
     Route::get('/booking/step-three', [BookingController::class, 'stepOne']);
     Route::get('/booking/complete', [BookingController::class, 'myBookings']);
@@ -42,12 +40,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/booking/step-three', [BookingController::class, 'stepThree'])->name('booking.step.three');
 
     Route::get('/api/desks/{plan}', [BookingController::class, 'getDesks']);
-    
+
     Route::get('/booking/get-plans/{workplace_id}', [BookingController::class, 'getPlans']);
     Route::post('/booking/complete', [BookingController::class, 'complete'])->name('booking.complete');
 
     Route::get('/my-bookings', [BookingController::class, 'myBookings'])->name('booking.my');
-    
+
     Route::post('/override-desk/{desk}', [BookingController::class, 'getOtherDesk']);
 
     Route::get('/booking/history', [BookingController::class, 'history'])->name('bookings.history');
@@ -55,18 +53,19 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/presences', [PresenceController::class, 'index'])->name('presences.index');
     Route::post('/presences', [PresenceController::class, 'store'])->name('presences.store');
-    Route::get('/presences/{date}/delete', [PresenceController::class, 'destroySimple'])->name('presences.delete');
+    Route::delete('/presences/{date}', [PresenceController::class, 'destroy'])->name('presences.destroy');
     Route::get('/api/presences/stats', [PresenceController::class, 'getStats'])->name('presences.stats');
 
-    Route::post('/booking/cancel/{id}', [BookingController::class, 'cancel'])->name('bookings.cancel');
+    Route::post('/booking/cancel/{booking}', [BookingController::class, 'cancel'])->name('bookings.cancel');
 
-    Route::post('/check-workstation-availability', [ BookingController::class, 'checkWorkstationAvailability'])->name('booking.checkWorkstationAvailability');
+    Route::post('/check-workstation-availability', [BookingController::class, 'checkWorkstationAvailability'])->name('booking.checkWorkstationAvailability');
     Route::post('/check-desk-availability', [BookingController::class, 'checkAvailability'])->name('desk.checkAvailability');
-    Route::get('/booking/check-desk', function () { return view('booking.check-desk');   })->name('desk.check');
+    Route::get('/booking/check-desk', function () {
+        return view('booking.check-desk');
+    })->name('desk.check');
 
     Route::patch('/projects/{project}/resources', [ProjectMembershipController::class, 'updateResources'])->name('projects.updateResources');
 
-    // Richieste progetti
     Route::post('/projects/{project}/request-join', [ProjectRequestController::class, 'requestJoin'])
         ->name('projects.requestJoin');
     Route::post('/projects/{project}/request-leave', [ProjectRequestController::class, 'requestLeave'])
@@ -85,13 +84,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/projects/{project}/edit', [ProjectMembershipController::class, 'edit'])->name('projects.edit');
     Route::patch('/projects/{project}', [ProjectMembershipController::class, 'update'])->name('projects.update');
     Route::get('/projects/{project}', [ProjectMembershipController::class, 'show'])->name('projects.show');
-    Route::get('/projects/{project}/join/{role}', [ProjectMembershipController::class, 'joinSimple'])->name('projects.join.simple');
-    Route::post('/projects/{project}/join', [ProjectMembershipController::class, 'join'])->name('projects.join');
-    Route::get('/projects/{project}/leave', [ProjectMembershipController::class, 'leaveSimple'])->name('projects.leave.simple');
     Route::delete('/projects/{project}/leave', [ProjectMembershipController::class, 'leave'])->name('projects.leave');
-    Route::patch('/projects/{project}/update-role', [ProjectMembershipController::class, 'updateRole'])->name('projects.update-role');
     Route::patch('/projects/{project}/members/{member}/role', [ProjectMembershipController::class, 'updateMemberRole'])->name('projects.update-member-role');
-    
+
     Route::get('/absences/dashboard', [AbsenceDashboardController::class, 'index'])->name('absences.dashboard');
     Route::get('/absences/project/{project}', [AbsenceDashboardController::class, 'projectAbsences'])->name('absences.project');
     Route::get('/absences/export', [AbsenceDashboardController::class, 'export'])->name('absences.export');

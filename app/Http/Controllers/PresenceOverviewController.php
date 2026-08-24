@@ -3,11 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Presence;
-use App\Models\Project;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
 
 class PresenceOverviewController extends Controller
 {
@@ -15,13 +14,13 @@ class PresenceOverviewController extends Controller
     {
         $user = Auth::user();
 
-        abort_unless($user->superuser, 403, 'Accesso negato');
+        abort_unless($user->can('viewOverview', Presence::class), 403, 'Accesso negato');
 
         $month = $request->input('month', now()->format('Y-m'));
         $start = Carbon::parse($month)->startOfMonth();
-        $end   = Carbon::parse($month)->endOfMonth();
+        $end = Carbon::parse($month)->endOfMonth();
 
-        $days   = [];
+        $days = [];
         $cursor = $start->copy();
         while ($cursor->lte($end)) {
             if ($cursor->isWeekday()) {
@@ -32,7 +31,7 @@ class PresenceOverviewController extends Controller
 
         $projectFilter = $request->input('project_filter');
 
-        $allProjects = Project::where('active', true)->orderBy('name')->get();
+        $allProjects = $user->visibleProjects()->orderBy('name')->get();
 
         $validFilter = null;
         if ($projectFilter) {
@@ -41,31 +40,26 @@ class PresenceOverviewController extends Controller
                 : null;
         }
 
+        $usersQuery = User::query()->orderBy('name');
+
         if ($validFilter) {
-            $teamUsers = User::whereHas('projects', function ($q) use ($validFilter) {
-                    $q->where('projects.id', $validFilter);
-                })
-                ->where('team_id', $user->team_id)
-                ->orderBy('name')
-                ->get();
-        } else {
-            $teamUsers = User::where('team_id', $user->team_id)
-                ->orderBy('name')
-                ->get();
+            $usersQuery->whereHas('projects', fn ($q) => $q->where('projects.id', $validFilter));
         }
+
+        $teamUsers = $usersQuery->get();
 
         $presences = Presence::whereIn('user_id', $teamUsers->pluck('id'))
             ->whereBetween('date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
             ->get()
             ->groupBy(function ($p) {
-                return $p->user_id . '-' . $p->date;
+                return $p->user_id.'-'.$p->date;
             });
 
         $overview = [];
         foreach ($teamUsers as $u) {
             $row = ['user' => $u];
             foreach ($days as $day) {
-                $key = $u->id . '-' . $day;
+                $key = $u->id.'-'.$day;
                 $row['days'][$day] = $presences[$key][0]->status ?? '-';
             }
             $overview[] = $row;

@@ -22,6 +22,3 @@
     <link rel="stylesheet" href="/css/custom.css">
 @stop
 
-@section('js')
-    <script> console.log('Hi!'); </script>
-@stop

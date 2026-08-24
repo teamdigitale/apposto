@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Plan extends Model
 {
-    //
-    protected $fillable = ['description', 'workplace_id', 'cover_image','user_name'];
+    use HasFactory;
+
+    protected $fillable = ['description', 'workplace_id', 'cover_image', 'user_name'];
 
     public function workplace()
     {
@@ -16,9 +18,9 @@ class Plan extends Model
 
     public function teams()
     {
-        return $this->belongsToMany(Team::class, 'plans_teams', 'plan_id','team_id');
+        return $this->belongsToMany(Team::class, 'plans_teams', 'plan_id', 'team_id');
     }
-    
+
     public function desks()
     {
         return $this->hasMany(Desk::class)->where('active', 1);

@@ -7,11 +7,11 @@
                 <h2>I Miei Progetti</h2>
                 <p class="text-muted">Gestisci i progetti a cui lavori</p>
             </div>
-            @if(auth()->user()->superuser || auth()->user()->is_project_manager)
+            @can('create', App\Models\Project::class)
                 <a href="{{ route('projects.create') }}" class="btn btn-success">
                     <i class="bi bi-plus-circle"></i> Nuovo Progetto
                 </a>
-            @endif
+            @endcan
         </div>
     </div>
 
@@ -39,90 +39,82 @@
     @endif
 
     <div class="row">
-        <!-- Progetti a cui sono assegnato -->
         <div class="col-md-6 mb-4">
-            <div class="card">
+            <div class="card h-100">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
-                        <i class="bi bi-briefcase-fill"></i> I Miei Progetti 
+                        I miei progetti
                         <span class="badge bg-light text-primary">{{ $myProjects->count() }}</span>
                     </h5>
-                    <!-- I Miei Progetti -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">I Miei Progetti <span class="badge bg-light text-dark">{{ $myProjects->count() }}</span></h5>
-                        </div>
-                        <div class="card-body">
-                            @if($myProjects->isEmpty())
-                                <p class="text-muted">Non fai ancora parte di nessun progetto.</p>
-                            @else
-                                <div class="list-group">
-                                    @foreach($myProjects as $project)
-                                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h6 class="mb-1 text-danger">{{ $project->name }}</h6>
-                                                <small class="text-muted">
-                                                    {{ $project->users_count ?? $project->users->count() }} membri · 
-                                                    Member dal {{ $project->pivot->created_at?->format('d/m/Y') ?? 'N/A' }}
-                                                </small>
-                                            </div>
-                                            <div class="btn-group">
-                                                <a href="{{ route('projects.show', $project->id) }}" 
-                                                class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-eye"></i> Dettagli
-                                                </a>
-                                                
-                                                <form method="POST" 
-                                                    action="{{ route('projects.requestLeave', $project->id) }}" 
-                                                    class="d-inline"
-                                                    onsubmit="return confirm('Vuoi richiedere di lasciare {{ $project->name }}? L\'admin dovrà approvare.')">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                        <i class="bi bi-box-arrow-right"></i> Richiedi di Lasciare
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    @endforeach
+                </div>
+                <div class="card-body">
+                    @if($myProjects->isEmpty())
+                        <p class="text-muted">Non fai ancora parte di nessun progetto.</p>
+                    @else
+                        <div class="list-group">
+                            @foreach($myProjects as $project)
+                                <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div>
+                                        <h6 class="mb-1">{{ $project->name }}</h6>
+                                        <small class="text-muted">
+                                            {{ $project->users_count ?? $project->users->count() }} membri
+                                            @if($project->pivot->created_at)
+                                                · dal {{ $project->pivot->created_at->format('d/m/Y') }}
+                                            @endif
+                                        </small>
+                                    </div>
+                                    <div class="btn-group">
+                                        <a href="{{ route('projects.show', $project->id) }}" class="btn btn-sm btn-outline-primary">
+                                            Dettagli
+                                        </a>
+                                        <form method="POST"
+                                              action="{{ route('projects.requestLeave', $project->id) }}"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Vuoi richiedere di lasciare {{ $project->name }}? L\'admin dovrà approvare.')">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                Richiedi di lasciare
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
-                            @endif
+                            @endforeach
                         </div>
-                    </div>
+                    @endif
                 </div>
             </div>
         </div>
 
-        <!-- Progetti disponibili -->
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0">Progetti Disponibili <span class="badge bg-light text-dark">{{ $availableProjects->count() }}</span></h5>
-            </div>
-            <div class="card-body">
-                @if($availableProjects->isEmpty())
-                    <p class="text-muted">Non ci sono progetti disponibili al momento.</p>
-                @else
-                    <div class="list-group">
-                        @foreach($availableProjects as $project)
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1 text-danger">{{ $project->name }}</h6>
-                                    <small class="text-muted">
-                                        {{ $project->description ?? 'Nessuna descrizione' }}
-                                    </small>
-                                </div>
-                                <div>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        Progetti disponibili
+                        <span class="badge bg-light text-dark">{{ $availableProjects->count() }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if($availableProjects->isEmpty())
+                        <p class="text-muted">Non ci sono progetti disponibili al momento.</p>
+                    @else
+                        <div class="list-group">
+                            @foreach($availableProjects as $project)
+                                <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div>
+                                        <h6 class="mb-1">{{ $project->name }}</h6>
+                                        <small class="text-muted">{{ $project->description ?? 'Nessuna descrizione' }}</small>
+                                    </div>
                                     <button type="button" class="btn btn-sm btn-success"
-                                            onclick="openJoinModal({{ $project->id }}, '{{ addslashes($project->name) }}')">
-                                        <i class="bi bi-send"></i> Richiedi di Unirti
+                                            onclick="openJoinModal({{ $project->id }}, {{ json_encode($project->name) }})">
+                                        Richiedi di unirti
                                     </button>
                                 </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
             </div>
         </div>
-
     </div>
 
     <!-- Link rapidi -->

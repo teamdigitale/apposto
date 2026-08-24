@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Models\Booking;
+use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\Booking;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,12 +27,14 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->merge([
-            'email' => strtolower($request->input('email')) // Converte l'email in minuscolo
+            'email' => strtolower($request->input('email')), // Converte l'email in minuscolo
         ]);
-        
+
         $request->authenticate();
 
-        Booking::where('to_date', '<=',now())->where('status',0)->update(['status' => 3]);
+        Booking::where('to_date', '<=', now())
+            ->where('status', BookingStatus::Confirmed)
+            ->update(['status' => BookingStatus::Completed->value]);
 
         $request->session()->regenerate();
 

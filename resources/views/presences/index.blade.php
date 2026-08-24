@@ -70,8 +70,19 @@
 @stop
 
 <div class="container mt-4">
+    <form id="delete-presence-form" method="POST" class="d-none">
+        @csrf
+        @method('DELETE')
+    </form>
     <!-- Alert per feedback -->
-    <div id="alert-container"></div>
+    <div id="alert-container">
+        @if(session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
+        @if(session('error'))
+            <div class="alert alert-danger">{{ session('error') }}</div>
+        @endif
+    </div>
 
     <div class="row">
         <!-- Colonna sinistra: Calendario -->
@@ -92,14 +103,6 @@
                                 </label>
                                 <select name="project_filter" class="form-select form-select-sm" onchange="this.form.submit()">
                                     <option value="">Tutti i progetti</option>
-                                    @php
-                                        $user = auth()->user();
-                                        if ($user->superuser || $user->is_project_manager) {
-                                            $selectableProjects = \App\Models\Project::where('active', true)->orderBy('name')->get();
-                                        } else {
-                                            $selectableProjects = $user->projects()->where('active', true)->orderBy('name')->get();
-                                        }
-                                    @endphp
                                     @foreach($selectableProjects as $proj)
                                         <option value="{{ $proj->id }}" {{ request('project_filter') == $proj->id ? 'selected' : '' }}>
                                             {{ $proj->name }}
@@ -790,8 +793,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     function deletePresence(date, eventObj) {
-        // Redirect diretto alla route di eliminazione
-        window.location.href = `/presences/${date}/delete`;
+        const form = document.getElementById('delete-presence-form');
+        form.action = `/presences/${date}`;
+        form.submit();
     }
 
     // ==========================================

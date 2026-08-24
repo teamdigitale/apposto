@@ -25,7 +25,7 @@
                         
                         
                         <div class="card-body p-0 my-2">
-                          <h3 class="green-title-big t-primary mb-8"><a href="{{ route('bookings.current') }}" class="text-decoration-none" data-element="service-link">Vedi lo Prenotazioni Attuali</a></h3>
+                          <h3 class="green-title-big t-primary mb-8"><a href="{{ route('bookings.current') }}" class="text-decoration-none" data-element="service-link">Vedi le prenotazioni attuali</a></h3>
                           <p class="text-paragraph">Consulta l'elenco delle prenotazioni in corso.</p>
                         </div>
                       </div>
@@ -101,8 +101,4 @@
 
 @section('css')
     <link rel="stylesheet" href="/css/custom.css">
-@stop
-
-@section('js')
-    <script> console.log('Hi!'); </script>
 @stop

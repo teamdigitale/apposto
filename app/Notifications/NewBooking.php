@@ -3,15 +3,13 @@
 namespace App\Notifications;
 
 use App\Models\Desk;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use Carbon\Carbon;
 
-use function Illuminate\Log\log;
-
-class NewBooking extends Notification
+class NewBooking extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -23,6 +21,7 @@ class NewBooking extends Notification
     public function __construct($booking)
     {
         $this->booking = $booking;
+        $this->afterCommit();
     }
 
     /**
@@ -41,19 +40,23 @@ class NewBooking extends Notification
     public function toMail(object $notifiable): MailMessage
     {
 
-        $desk = Desk::where('id', '=', $this->booking["desk_id"])->first();
-       
+        $desk = Desk::with('plan.workplace')->find($this->booking['desk_id']);
+
+        $deskLine = $desk
+            ? 'Scrivania: '.$desk->identifier.' - Piano: '.($desk->plan->description ?? '').' Sede: '.($desk->plan->workplace->name ?? '')
+            : 'Scrivania non disponibile';
+
         return (new MailMessage)
-                    ->subject('Conferma Prenotazione')
-                    ->greeting('Ciao ' . $notifiable->name)
-                    ->line('La tua prenotazione è stata convalidata!')
-                    ->line("Data/e ".  Carbon::parse($this->booking["start_date"])->format('d-m-Y') ." - ".  $this->booking["start_time"] ." # ". Carbon::parse($this->booking["end_date"])->format('d-m-Y') ." - ".  $this->booking["end_time"])
-                    ->line('La tua prenotazione è stata convalidata!')
-                    ->line("Scrivania: " . $desk->identifier . " - Piano: ". $desk->plan->description . " Sede: ". $desk->plan->workplace->name)
-                    ->action('Vedi Prenotazione', url('/my-bookings' ))
-                    ->line("Grazie per aver utilizzato l'applicativo di prenotazione postazioni !")
-                    ->salutation("Buon lavoro");
-                    
+            ->subject('Conferma Prenotazione')
+            ->greeting('Ciao '.$notifiable->name)
+            ->line('La tua prenotazione è stata convalidata!')
+            ->line('Data/e '.Carbon::parse($this->booking['start_date'])->format('d-m-Y').' - '.$this->booking['start_time'].' # '.Carbon::parse($this->booking['end_date'])->format('d-m-Y').' - '.$this->booking['end_time'])
+            ->line('La tua prenotazione è stata convalidata!')
+            ->line($deskLine)
+            ->action('Vedi Prenotazione', url('/my-bookings'))
+            ->line("Grazie per aver utilizzato l'applicativo di prenotazione postazioni !")
+            ->salutation('Buon lavoro');
+
     }
 
     /**

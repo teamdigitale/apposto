@@ -22,7 +22,7 @@
     <textarea name="message" required></textarea>
 
     <!-- CAPTCHA -->
-    <div class="g-recaptcha" data-sitekey="{{ env('RECAPTCHA_SITE_KEY') }}"></div>
+    <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
 
     <button type="submit" class="btn btn-primary mt-4">Invia</button>
 </form>

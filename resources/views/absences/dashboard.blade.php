@@ -55,7 +55,7 @@
                             </label>
                             <select name="project_id" class="form-select">
                                 <option value="">
-                                    {{ (auth()->user()->superuser || auth()->user()->is_project_manager) ? 'Tutti i progetti' : 'Tutti i miei progetti' }}
+                                    {{ auth()->user()->hasFullFrontendVisibility() ? 'Tutti i progetti' : 'Tutti i miei progetti' }}
                                 </option>
                                 @foreach($allUserProjects as $proj)
                                     <option value="{{ $proj->id }}" {{ $projectFilter == $proj->id ? 'selected' : '' }}>
@@ -127,7 +127,7 @@
                         type="button" role="tab"
                         onclick="switchTab('tab-utenti')">
                     <i class="bi bi-people"></i> Per Utente
-                    <span class="badge bg-secondary ms-1">{{ count($userAbsences) }}</span>
+                    <span class="badge bg-primary text-white ms-1">{{ count($userAbsences) }}</span>
                 </button>
             </li>
         </ul>
@@ -168,7 +168,7 @@
             </div>
         </div>
 
-         @if(Auth::user()->superuser || Auth::user()->is_project_manager)
+         @if(Auth::user()->hasFullFrontendVisibility())
             <div class="row mb-4">
                 <div class="col-md-12">
                     <div class="card">
@@ -445,21 +445,21 @@
                                         </td>
                                         <td class="text-center">
                                             @if($ua['stats']['permesso'] > 0)
-                                                <span class="badge bg-danger">{{ $ua['stats']['permesso'] }}</span>
+                                                <span class="badge bg-danger text-white">{{ $ua['stats']['permesso'] }}</span>
                                             @else
                                                 <span class="text-muted">—</span>
                                             @endif
                                         </td>
                                         <td class="text-center">
                                             @if($ua['stats']['smart_working'] > 0)
-                                                <span class="badge bg-info">{{ $ua['stats']['smart_working'] }}</span>
+                                                <span class="badge bg-info text-white">{{ $ua['stats']['smart_working'] }}</span>
                                             @else
                                                 <span class="text-muted">—</span>
                                             @endif
                                         </td>
                                         <td class="text-center">
                                             @if($ua['stats']['presente'] > 0)
-                                                <span class="badge bg-success">{{ $ua['stats']['presente'] }}</span>
+                                                <span class="badge bg-success text-white">{{ $ua['stats']['presente'] }}</span>
                                             @else
                                                 <span class="text-muted">—</span>
                                             @endif

@@ -2,12 +2,19 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Team extends Model
 {
-    //
+    use HasFactory;
+
     protected $fillable = ['label', 'allow_multi_day', 'can_book_exclusive'];
+
+    protected $casts = [
+        'allow_multi_day' => 'boolean',
+        'can_book_exclusive' => 'boolean',
+    ];
 
     public function users()
     {
@@ -18,5 +25,4 @@ class Team extends Model
     {
         return $this->belongsToMany(Plan::class, 'plans_teams', 'team_id', 'plan_id');
     }
-
 }

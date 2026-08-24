@@ -61,6 +61,7 @@
                             @endif
                         </td>
                         <td>
+                            @can('manageMembers', $req->project)
                             <form method="POST" action="{{ route('projectRequests.approve', $req->id) }}" class="d-inline">
                                 @csrf
                                 <button type="submit" class="btn btn-sm btn-success" 
@@ -74,7 +75,6 @@
                                 <i class="bi bi-x-circle"></i> Rifiuta
                             </button>
                             
-                            <!-- Modal rifiuto -->
                             <div class="modal fade" id="rejectModal{{ $req->id }}">
                                 <div class="modal-dialog">
                                     <div class="modal-content">
@@ -99,6 +99,9 @@
                                     </div>
                                 </div>
                             </div>
+                            @else
+                                <span class="text-muted">Solo lettura</span>
+                            @endcan
                         </td>
                     </tr>
                     @endforeach

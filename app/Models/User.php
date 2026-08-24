@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
+use App\Enums\BookingStatus;
 use App\Notifications\ResetPasswordNotification;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -46,7 +47,45 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'superuser' => 'boolean',
+            'is_project_manager' => 'boolean',
+            'allow_view' => 'boolean',
         ];
+    }
+
+    public function hasFullFrontendVisibility(): bool
+    {
+        return $this->superuser || $this->is_project_manager;
+    }
+
+    public function canManageProjects(): bool
+    {
+        return $this->hasFullFrontendVisibility();
+    }
+
+    public function managesProject(Project $project): bool
+    {
+        if ($this->superuser) {
+            return true;
+        }
+
+        if (! $this->is_project_manager) {
+            return false;
+        }
+
+        return $this->projects()
+            ->wherePivot('role', 'manager')
+            ->where('projects.id', $project->id)
+            ->exists();
+    }
+
+    public function visibleProjects()
+    {
+        if ($this->hasFullFrontendVisibility()) {
+            return Project::query()->where('active', true);
+        }
+
+        return $this->projects()->where('active', true);
     }
 
     public function setEmailAttribute($value): void
@@ -64,7 +103,7 @@ class User extends Authenticatable
         $today = Carbon::today();
 
         return $this->hasMany(Booking::class)
-            ->where('status', '=', '0')
+            ->where('status', BookingStatus::Confirmed)
             ->where('from_date', '<=', $today)
             ->where('to_date', '>=', $today)
             ->with('desk');

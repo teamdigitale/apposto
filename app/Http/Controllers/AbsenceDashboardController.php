@@ -7,23 +7,19 @@ use App\Models\Project;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class AbsenceDashboardController extends Controller
 {
-    /**
-     * Mostra la dashboard con le assenze per progetto
-     */
     public function index(Request $request)
     {
+        $this->authorize('viewAnyAbsences', Project::class);
+
         $user = auth()->user();
-        
         $projectFilter = $request->input('project_id', null);
-        
+
         $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
-        
-        // Validazione date
+
         $validated = validator([
             'start_date' => $startDate,
             'end_date' => $endDate,
@@ -31,55 +27,39 @@ class AbsenceDashboardController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
         ])->validate();
-        
+
         $startDate = Carbon::parse($validated['start_date']);
         $endDate = Carbon::parse($validated['end_date']);
-        
-        // Calcola giorni lavorativi nel periodo
-        $totalWorkDays = 0;
+        $totalWorkDays = $this->countWorkDays($startDate, $endDate);
         $period = CarbonPeriod::create($startDate, $endDate);
-        foreach ($period as $date) {
-            if ($date->isWeekday()) {
-                $totalWorkDays++;
-            }
-        }
-        
-        $canSeeAll = $user->superuser || $user->is_project_manager;
 
+        $baseQuery = $user->visibleProjects();
+        $allUserProjects = (clone $baseQuery)->orderBy('name')->get();
+
+        $validFilter = null;
         if ($projectFilter) {
             $pid = (int) $projectFilter;
-            if ($canSeeAll) {
-                $validFilter = \App\Models\Project::where('id', $pid)->where('active', true)->exists()
-                    ? $pid : null;
-            } else {
-                $validFilter = $user->projects()->where('projects.id', $pid)->where('active', true)->exists()
-                    ? $pid : null;
-            }
-        } else {
-            $validFilter = null;
-        }
-        $projectFilter = $validFilter;
-
-        if ($canSeeAll) {
-            $baseQuery = \App\Models\Project::where('active', true);
-        } else {
-            $baseQuery = $user->projects()->where('active', true);
+            $validFilter = $allUserProjects->firstWhere('id', $pid)?->id;
         }
 
         $projectsQuery = (clone $baseQuery)
             ->withCount('users')
-            ->with('users');
+            ->with(['users.projects' => fn ($q) => $q->withPivot('role')]);
 
-        if ($projectFilter) {
-            $projectsQuery->where('projects.id', $projectFilter);
+        if ($validFilter) {
+            $projectsQuery->where('projects.id', $validFilter);
         }
 
         $projects = $projectsQuery->get();
+        $projectFilter = $validFilter;
 
-        $allUserProjects = (clone $baseQuery)
-            ->orderBy('name')
+        $memberIds = $projects->flatMap(fn ($p) => $p->users->pluck('id'))->unique()->values();
+        $presences = Presence::whereIn('user_id', $memberIds)
+            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->with('user:id,name')
             ->get();
-        
+        $presencesByUser = $presences->groupBy('user_id');
+
         $globalStats = [
             'total_projects' => $projects->count(),
             'total_users' => $projects->sum('users_count'),
@@ -88,97 +68,79 @@ class AbsenceDashboardController extends Controller
             'most_affected_project' => null,
             'least_affected_project' => null,
         ];
-        
-        // Calcola le assenze per ogni progetto
+
         $projectAbsences = [];
-        
+
         foreach ($projects as $project) {
             $totalMembers = $project->users_count;
-            
             if ($totalMembers == 0) {
                 continue;
             }
-            
-            $memberIds = $project->users->pluck('id')->toArray();
-            
-            // Ottieni tutte le presenze (non solo ferie) dei membri nel periodo
-            $presences = Presence::whereIn('user_id', $memberIds)
-                ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
-                ->with('user')
-                ->get();
-            
-            // Raggruppa per data E status
-            $presencesByDate = $presences->groupBy('date');
-            $presencesByStatus = $presences->groupBy('status');
-            
-            // Calcola assenze per data
+
+            $projectMemberIds = $project->users->pluck('id');
+            $projectPresences = $presences->whereIn('user_id', $projectMemberIds);
+            $presencesByDate = $projectPresences->groupBy('date');
+            $presencesByStatus = $projectPresences->groupBy('status');
+
             $absencesByDate = [];
             $criticalDates = [];
-            
+
             foreach ($period as $date) {
-                if (!$date->isWeekday()) {
+                if (! $date->isWeekday()) {
                     continue;
                 }
-                
+
                 $dateStr = $date->format('Y-m-d');
-                
-                // Conta assenti (ferie + permessi)
                 $dayPresences = $presencesByDate->get($dateStr, collect());
                 $absentCount = $dayPresences->whereIn('status', ['ferie', 'permesso'])->count();
-                
+
                 if ($absentCount > 0) {
                     $percentage = round(($absentCount / $totalMembers) * 100, 1);
                     $absentUsers = $dayPresences->whereIn('status', ['ferie', 'permesso'])
-                        ->map(function($p) {
-                            return [
-                                'name' => $p->user->name,
-                                'status' => $p->status
-                            ];
-                        })->toArray();
-                    
+                        ->map(fn ($p) => [
+                            'name' => $p->user->name,
+                            'status' => $p->status,
+                        ])->toArray();
+
                     $absencesByDate[$dateStr] = [
                         'count' => $absentCount,
                         'percentage' => $percentage,
                         'users' => $absentUsers,
                     ];
-                    
-                    // Segna come critico se > 50%
+
                     if ($percentage > 50) {
                         $criticalDates[] = $dateStr;
                     }
                 }
             }
-            
-            // Calcola statistiche per status
+
             $statusBreakdown = [
                 'ferie' => $presencesByStatus->get('ferie', collect())->count(),
                 'permesso' => $presencesByStatus->get('permesso', collect())->count(),
                 'smart_working' => $presencesByStatus->get('smart_working', collect())->count(),
                 'presente' => $presencesByStatus->get('presente', collect())->count(),
             ];
-            
-            // ✅ CORRETTO: Calcola statistiche generali
+
             $maxAbsence = 0;
             $avgAbsence = 0;
             $daysWithAbsences = 0;
             $totalAbsenceDays = $statusBreakdown['ferie'] + $statusBreakdown['permesso'];
-            
-            if (!empty($absencesByDate)) {
+
+            if ($absencesByDate !== []) {
                 $percentages = array_column($absencesByDate, 'percentage');
                 $maxAbsence = max($percentages);
                 $avgAbsence = round(array_sum($percentages) / count($percentages), 1);
                 $daysWithAbsences = count($absencesByDate);
             }
-            
-            // Calcola coverage (giorni con almeno 1 persona presente)
-            $daysWithPresence = $presencesByDate->filter(function($presences) {
-                return $presences->where('status', 'presente')->count() > 0;
-            })->count();
-            
-            $coveragePercentage = $totalWorkDays > 0 
-                ? round(($daysWithPresence / $totalWorkDays) * 100, 1) 
+
+            $daysWithPresence = $presencesByDate->filter(
+                fn ($dayPresences) => $dayPresences->where('status', 'presente')->count() > 0
+            )->count();
+
+            $coveragePercentage = $totalWorkDays > 0
+                ? round(($daysWithPresence / $totalWorkDays) * 100, 1)
                 : 0;
-            
+
             $projectAbsences[] = [
                 'project' => $project,
                 'total_members' => $totalMembers,
@@ -193,17 +155,13 @@ class AbsenceDashboardController extends Controller
                 'total_work_days' => $totalWorkDays,
                 'risk_level' => $avgAbsence > 50 ? 'high' : ($avgAbsence > 30 ? 'medium' : 'low'),
             ];
-            
+
             $globalStats['total_absence_days'] += $totalAbsenceDays;
         }
-        
-        // Ordina per percentuale media di assenza (decrescente)
-        usort($projectAbsences, function($a, $b) {
-            return $b['avg_absence_percentage'] <=> $a['avg_absence_percentage'];
-        });
-        
-        // Aggiorna stats globali
-        if (!empty($projectAbsences)) {
+
+        usort($projectAbsences, fn ($a, $b) => $b['avg_absence_percentage'] <=> $a['avg_absence_percentage']);
+
+        if ($projectAbsences !== []) {
             $globalStats['avg_absence_percentage'] = round(
                 array_sum(array_column($projectAbsences, 'avg_absence_percentage')) / count($projectAbsences),
                 1
@@ -211,125 +169,94 @@ class AbsenceDashboardController extends Controller
             $globalStats['most_affected_project'] = $projectAbsences[0] ?? null;
             $globalStats['least_affected_project'] = end($projectAbsences) ?: null;
         }
-      
-        // -------------------------------------------------------
-        // PUNTO 4: Calcola vista per utente
-        // Raccoglie tutti i membri unici dei progetti e aggrega
-        // le loro presenze nel periodo selezionato.
-        // -------------------------------------------------------
-        $allMembers = collect();
-        foreach ($projects as $project) {
-            foreach ($project->users as $member) {
-                if (!$allMembers->contains('id', $member->id)) {
-                    $allMembers->push($member);
-                }
-            }
-        }
 
+        $allMembers = $projects->flatMap->users->unique('id');
+        $projectIds = $projects->pluck('id');
         $userAbsences = [];
-        $projectIds   = $projects->pluck('id');
 
         foreach ($allMembers as $member) {
-            $memberPresences = Presence::where('user_id', $member->id)
-                ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
-                ->get();
+            $memberPresences = $presencesByUser->get($member->id, collect());
+            $memberProjects = $member->projects
+                ->whereIn('id', $projectIds)
+                ->values();
 
-            // Progetti condivisi con il membro (per mostrare ruolo)
-            $memberProjects = $member->projects()
-                ->whereIn('projects.id', $projectIds)
-                ->withPivot('role')
-                ->get();
-
-            $ferieCount    = $memberPresences->where('status', 'ferie')->count();
+            $ferieCount = $memberPresences->where('status', 'ferie')->count();
             $permessoCount = $memberPresences->where('status', 'permesso')->count();
             $totalAbsences = $ferieCount + $permessoCount;
 
             $userAbsences[] = [
-                'user'               => $member,
-                'projects'           => $memberProjects,
-                'stats'              => [
-                    'ferie'         => $ferieCount,
-                    'permesso'      => $permessoCount,
+                'user' => $member,
+                'projects' => $memberProjects,
+                'stats' => [
+                    'ferie' => $ferieCount,
+                    'permesso' => $permessoCount,
                     'smart_working' => $memberPresences->where('status', 'smart_working')->count(),
-                    'presente'      => $memberPresences->where('status', 'presente')->count(),
+                    'presente' => $memberPresences->where('status', 'presente')->count(),
                 ],
-                'total_absences'     => $totalAbsences,
+                'total_absences' => $totalAbsences,
                 'absence_percentage' => $totalWorkDays > 0
                     ? round(($totalAbsences / $totalWorkDays) * 100, 1)
                     : 0,
             ];
         }
 
-        // Ordina per percentuale assenza decrescente
-        usort($userAbsences, fn($a, $b) => $b['absence_percentage'] <=> $a['absence_percentage']);
+        usort($userAbsences, fn ($a, $b) => $b['absence_percentage'] <=> $a['absence_percentage']);
 
         return view('absences.dashboard', compact(
             'projectAbsences',
             'userAbsences',
-            'startDate', 
-            'endDate', 
-            'globalStats', 
+            'startDate',
+            'endDate',
+            'globalStats',
             'totalWorkDays',
             'allUserProjects',
             'projectFilter'
-        ));        
+        ));
     }
 
-    /**
-     * API endpoint per ottenere assenze di un progetto specifico (JSON)
-     */
-    public function projectAbsences(Request $request, $projectId)
+    public function projectAbsences(Request $request, Project $project)
     {
+        $this->authorize('viewAbsences', $project);
+
         $validated = $request->validate([
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
         ]);
-        
+
         $startDate = Carbon::parse($validated['start_date']);
         $endDate = Carbon::parse($validated['end_date']);
-        
-        $project = Project::withCount('users')->findOrFail($projectId);
+
+        $project->loadCount('users')->load('users:id,name');
         $totalMembers = $project->users_count;
-        
+
         if ($totalMembers == 0) {
             return response()->json([
                 'project' => $project->name,
                 'message' => 'Nessun membro nel progetto',
-                'absences' => []
+                'absences' => [],
             ]);
         }
-        
-        // Ottieni gli ID dei membri del progetto
-        $memberIds = $project->users->pluck('id')->toArray();
-        
-        // Ottieni tutte le presenze 'ferie' dei membri nel periodo
+
+        $memberIds = $project->users->pluck('id');
         $presences = Presence::whereIn('user_id', $memberIds)
             ->where('status', 'ferie')
-            ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
-            ->with('user')
+            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->with('user:id,name')
             ->get()
             ->groupBy('date');
-        
-        // Calcola per data
+
         $absencesByDate = [];
         $period = CarbonPeriod::create($startDate, $endDate);
-        
+
         foreach ($period as $date) {
-            if (!$date->isWeekday()) {
-                continue; // Salta weekend
+            if (! $date->isWeekday()) {
+                continue;
             }
-            
+
             $dateStr = $date->format('Y-m-d');
             $dayPresences = $presences->get($dateStr, collect());
             $absentCount = $dayPresences->count();
-            
-            $absentUsers = $dayPresences->map(function($presence) {
-                return [
-                    'name' => $presence->user->name,
-                    'date' => Carbon::parse($presence->date)->format('d/m/Y'),
-                ];
-            })->toArray();
-            
+
             $absencesByDate[] = [
                 'date' => $dateStr,
                 'date_formatted' => $date->format('d/m/Y'),
@@ -337,10 +264,13 @@ class AbsenceDashboardController extends Controller
                 'absent_count' => $absentCount,
                 'present_count' => $totalMembers - $absentCount,
                 'absence_percentage' => round(($absentCount / $totalMembers) * 100, 1),
-                'absent_users' => $absentUsers,
+                'absent_users' => $dayPresences->map(fn ($presence) => [
+                    'name' => $presence->user->name,
+                    'date' => Carbon::parse($presence->date)->format('d/m/Y'),
+                ])->toArray(),
             ];
         }
-        
+
         return response()->json([
             'project' => $project->name,
             'total_members' => $totalMembers,
@@ -352,172 +282,149 @@ class AbsenceDashboardController extends Controller
         ]);
     }
 
-    /**
-     * Esporta le assenze in formato CSV
-     */
     public function export(Request $request)
     {
+        $this->authorize('exportAbsences', Project::class);
+
         $validated = $request->validate([
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
         ]);
-        
+
         $startDate = Carbon::parse($validated['start_date']);
         $endDate = Carbon::parse($validated['end_date']);
-        
-        $projects = Project::where('active', true)
+
+        $projects = auth()->user()->visibleProjects()
             ->withCount('users')
+            ->with('users:id')
             ->get();
-        
-        $filename = 'assenze_progetti_' . $startDate->format('Ymd') . '_' . $endDate->format('Ymd') . '.csv';
-        
+
+        $filename = 'assenze_progetti_'.$startDate->format('Ymd').'_'.$endDate->format('Ymd').'.csv';
+
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"$filename\"",
         ];
-        
-        $callback = function() use ($projects, $startDate, $endDate) {
+
+        $memberIds = $projects->flatMap(fn ($p) => $p->users->pluck('id'))->unique()->values();
+        $presences = Presence::whereIn('user_id', $memberIds)
+            ->where('status', 'ferie')
+            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->get(['user_id', 'date']);
+
+        $callback = function () use ($projects, $startDate, $endDate, $presences) {
             $file = fopen('php://output', 'w');
-            
-            // Header CSV
             fputcsv($file, ['Progetto', 'Data', 'Totale Membri', 'Assenti', 'Presenti', '% Assenza']);
-            
+
+            $period = CarbonPeriod::create($startDate, $endDate);
+
             foreach ($projects as $project) {
                 $totalMembers = $project->users_count;
-                
-                if ($totalMembers == 0) continue;
-                
-                // Ottieni gli ID dei membri del progetto
-                $memberIds = $project->users->pluck('id')->toArray();
-                
-                // Ottieni tutte le presenze 'ferie' dei membri nel periodo
-                $presences = Presence::whereIn('user_id', $memberIds)
-                    ->where('status', 'ferie')
-                    ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
-                    ->get()
-                    ->groupBy('date');
-                
-                $period = CarbonPeriod::create($startDate, $endDate);
-                
+                if ($totalMembers == 0) {
+                    continue;
+                }
+
+                $ids = $project->users->pluck('id');
+                $projectPresences = $presences->whereIn('user_id', $ids)->groupBy('date');
+
                 foreach ($period as $date) {
-                    if (!$date->isWeekday()) continue;
-                    
+                    if (! $date->isWeekday()) {
+                        continue;
+                    }
+
                     $dateStr = $date->format('Y-m-d');
-                    $dayPresences = $presences->get($dateStr, collect());
-                    $absentCount = $dayPresences->count();
-                    
+                    $absentCount = $projectPresences->get($dateStr, collect())->count();
+
                     if ($absentCount > 0) {
-                        $presentCount = $totalMembers - $absentCount;
-                        $percentage = round(($absentCount / $totalMembers) * 100, 1);
-                        
                         fputcsv($file, [
                             $project->name,
                             $date->format('d/m/Y'),
                             $totalMembers,
                             $absentCount,
-                            $presentCount,
-                            $percentage . '%'
+                            $totalMembers - $absentCount,
+                            round(($absentCount / $totalMembers) * 100, 1).'%',
                         ]);
                     }
                 }
             }
-            
+
             fclose($file);
         };
-        
+
         return response()->stream($callback, 200, $headers);
     }
 
-    /**
-     * API: Dati per grafici dashboard assenze
-     */
     public function getChartData(Request $request)
     {
+        $this->authorize('viewAnyAbsences', Project::class);
+
         $startDate = Carbon::parse($request->input('start_date', now()->format('Y-m-d')));
         $endDate = Carbon::parse($request->input('end_date', now()->addDays(30)->format('Y-m-d')));
-        
-        // Top 5 progetti con più assenze
-        $projects = Project::where('active', true)
+
+        $projects = auth()->user()->visibleProjects()
             ->withCount('users')
-            ->with('users')
+            ->with('users:id')
             ->get();
-        
+
+        $allMemberIds = $projects->flatMap(fn ($p) => $p->users->pluck('id'))->unique()->values();
+
+        $presences = Presence::whereIn('user_id', $allMemberIds)
+            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->get(['user_id', 'date', 'status']);
+
+        $workDays = $this->countWorkDays($startDate, $endDate);
         $projectStats = [];
+
         foreach ($projects as $project) {
-            if ($project->users_count == 0) continue;
-            
-            $memberIds = $project->users->pluck('id')->toArray();
-            
-            $absentDays = Presence::whereIn('user_id', $memberIds)
+            if ($project->users_count == 0) {
+                continue;
+            }
+
+            $memberIds = $project->users->pluck('id');
+            $absentDays = $presences
+                ->whereIn('user_id', $memberIds)
                 ->where('status', 'ferie')
-                ->whereBetween('date', [$startDate, $endDate])
                 ->count();
-            
-            $totalPossibleDays = $project->users_count * $this->countWorkDays($startDate, $endDate);
-            $absencePercentage = $totalPossibleDays > 0 
-                ? round(($absentDays / $totalPossibleDays) * 100, 1) 
-                : 0;
-            
+
+            $totalPossibleDays = $project->users_count * $workDays;
             $projectStats[] = [
                 'name' => $project->name,
                 'absent_days' => $absentDays,
-                'percentage' => $absencePercentage,
+                'percentage' => $totalPossibleDays > 0
+                    ? round(($absentDays / $totalPossibleDays) * 100, 1)
+                    : 0,
                 'total_members' => $project->users_count,
             ];
         }
-        
-        // Ordina per percentuale e prendi top 5
-        usort($projectStats, fn($a, $b) => $b['percentage'] <=> $a['percentage']);
+
+        usort($projectStats, fn ($a, $b) => $b['percentage'] <=> $a['percentage']);
         $topProjects = array_slice($projectStats, 0, 5);
-        
-        // Timeline assenze per tutti i progetti
+
         $period = CarbonPeriod::create($startDate, $endDate);
         $timeline = [];
-        
+        $totalMembers = $projects->sum('users_count');
+        $presencesByDate = $presences->where('status', 'ferie')->groupBy('date');
+
         foreach ($period as $date) {
-            if (!$date->isWeekday()) continue;
-            
-            $dateStr = $date->format('Y-m-d');
-            $totalAbsent = 0;
-            $totalMembers = 0;
-            
-            foreach ($projects as $project) {
-                if ($project->users_count == 0) continue;
-                
-                $memberIds = $project->users->pluck('id')->toArray();
-                $totalMembers += $project->users_count;
-                
-                $absentCount = Presence::whereIn('user_id', $memberIds)
-                    ->where('status', 'ferie')
-                    ->where('date', $dateStr)
-                    ->count();
-                
-                $totalAbsent += $absentCount;
+            if (! $date->isWeekday()) {
+                continue;
             }
-            
-            $percentage = $totalMembers > 0 
-                ? round(($totalAbsent / $totalMembers) * 100, 1) 
-                : 0;
-            
+
+            $dateStr = $date->format('Y-m-d');
+            $totalAbsent = $presencesByDate->get($dateStr, collect())->count();
+
             $timeline[] = [
                 'date' => $date->format('d/m'),
                 'date_full' => $dateStr,
                 'absent' => $totalAbsent,
-                'percentage' => $percentage,
+                'percentage' => $totalMembers > 0
+                    ? round(($totalAbsent / $totalMembers) * 100, 1)
+                    : 0,
             ];
         }
-        
-        // Statistiche per tipo di assenza (tutti i progetti)
-        $allMemberIds = $projects->flatMap(fn($p) => $p->users->pluck('id'))->unique()->toArray();
-        
-        $typeStats = Presence::whereIn('user_id', $allMemberIds)
-            ->whereBetween('date', [$startDate, $endDate])
-            ->selectRaw('status, COUNT(*) as count')
-            ->groupBy('status')
-            ->get()
-            ->pluck('count', 'status')
-            ->toArray();
-        
+
+        $typeStats = $presences->groupBy('status')->map->count()->all();
+
         return response()->json([
             'top_projects' => $topProjects,
             'timeline' => $timeline,
@@ -525,22 +432,20 @@ class AbsenceDashboardController extends Controller
             'period' => [
                 'start' => $startDate->format('d/m/Y'),
                 'end' => $endDate->format('d/m/Y'),
-                'days' => $this->countWorkDays($startDate, $endDate),
-            ]
+                'days' => $workDays,
+            ],
         ]);
     }
-    
-    private function countWorkDays($startDate, $endDate)
+
+    private function countWorkDays($startDate, $endDate): int
     {
         $count = 0;
-        $period = CarbonPeriod::create($startDate, $endDate);
-        
-        foreach ($period as $date) {
+        foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
             if ($date->isWeekday()) {
                 $count++;
             }
         }
-        
+
         return $count;
     }
 }

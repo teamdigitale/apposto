@@ -45,3 +45,32 @@ function something()
 {
     // ..
 }
+
+function deskWorld(): array
+{
+    $team = \App\Models\Team::factory()->create();
+    $workplace = \App\Models\Workplace::factory()->create();
+    $plan = \App\Models\Plan::factory()->create(['workplace_id' => $workplace->id]);
+    $team->plans()->attach($plan->id);
+    $desk = \App\Models\Desk::factory()->create(['plan_id' => $plan->id]);
+
+    return compact('team', 'workplace', 'plan', 'desk');
+}
+
+function userOnTeam(\App\Models\Team $team, array $attrs = []): \App\Models\User
+{
+    return \App\Models\User::factory()->create(array_merge([
+        'team_id' => $team->id,
+        'priority' => 1,
+    ], $attrs));
+}
+
+function nextWorkday(): string
+{
+    $date = now()->next('Wednesday');
+    while (\App\Helpers\Holidays::isHoliday($date)) {
+        $date->addWeek();
+    }
+
+    return $date->toDateString();
+}

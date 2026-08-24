@@ -3,8 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
-use App\Filament\Resources\UserResource\RelationManagers;
-use App\Models\Team;
+use App\Filament\Resources\UserResource\RelationManagers\PresenceRelationManager;
+use App\Filament\Resources\UserResource\RelationManagers\ProjectsRelationManager;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -14,14 +14,15 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Hash;
-use App\Filament\Resources\UserResource\RelationManagers\PresenceRelationManager;
-use App\Filament\Resources\UserResource\RelationManagers\ProjectsRelationManager;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
+
     protected static ?string $modelLabel = 'Utente';
+
     protected static ?string $pluralModelLabel = 'Utenti';
+
     protected static ?string $navigationLabel = 'Sezione Utenti';
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
@@ -31,7 +32,7 @@ class UserResource extends Resource
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
-                    ->required()->label("Nome e Cognome"),
+                    ->required()->label('Nome e Cognome'),
                 Forms\Components\TextInput::make('password')
                     ->password()
                     ->dehydrateStateUsing(fn ($state) => Hash::make($state))
@@ -42,28 +43,28 @@ class UserResource extends Resource
                 Forms\Components\TextInput::make('priority')
                     ->required()
                     ->numeric()
-                    ->default(1)->label("Priorità"),
+                    ->default(1)->label('Priorità'),
                 Forms\Components\Select::make('team_id')
                     ->label('Gruppo')
-                    ->relationship(name: 'team',titleAttribute: 'label')
-                    //->options(Team::all()->pluck('label', 'id'))
+                    ->relationship(name: 'team', titleAttribute: 'label')
                     ->searchable()->required(),
                 Forms\Components\Select::make('default_workstation_id')
                     ->label('Postazione di default')
-                    ->relationship(name: 'defaultWorkstation',titleAttribute: 'identifier')
-                    //->options(Team::all()->pluck('label', 'id'))
+                    ->relationship(name: 'defaultWorkstation', titleAttribute: 'identifier')
                     ->searchable(),
-                    Forms\Components\TextInput::make('phone'),    
+                Forms\Components\TextInput::make('phone'),
                 Forms\Components\Toggle::make('allow_view')
-                    ->required()->label('Condivide Info'),    
+                    ->required()->label('Condivide Info'),
                 Forms\Components\Toggle::make('superuser')
+                    ->label('Superuser'),
+                Forms\Components\Toggle::make('is_project_manager')
                     ->label('Project Manager'),
                 Forms\Components\Toggle::make('addetto_emergenza')
                     ->label('Add Emergenza/Antincendio'),
                 Forms\Components\Toggle::make('addetto_al_primo_soccorso')
                     ->label('Certificato Primo Soccorso'),
                 Forms\Components\TextInput::make('ruolo')
-                    ->label('Ruolo'),    
+                    ->label('Ruolo'),
             ]);
     }
 
@@ -72,10 +73,10 @@ class UserResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable()->label("Nome e Cognome"),
+                    ->searchable()->label('Nome e Cognome'),
                 Tables\Columns\TextColumn::make('email')
-                    ->searchable()->label("Mail"),
-                    
+                    ->searchable()->label('Mail'),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -86,16 +87,16 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('priority')
                     ->numeric()
-                    ->sortable()->label("Priorità"),
+                    ->sortable()->label('Priorità'),
                 Tables\Columns\TextColumn::make('team.label')
-                ->sortable()->label("Team appartenenza"),
+                    ->sortable()->label('Team appartenenza'),
                 Tables\Columns\IconColumn::make('allow_view')
                     ->boolean()->label('Condivide Info'),
                 Tables\Columns\IconColumn::make('superuser')
-                    ->label('Project Manager')
+                    ->label('Superuser')
                     ->boolean(),
                 Tables\Columns\IconColumn::make('is_project_manager')
-                    ->boolean()->label('Proj. Manager'),
+                    ->boolean()->label('Project Manager'),
                 Tables\Columns\TextColumn::make('ferie_totali')
                     ->numeric()->label('Assenze Tot'),
                 Tables\Columns\TextColumn::make('ferie_usate')
@@ -109,14 +110,14 @@ class UserResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(), 
-                Tables\Actions\RestoreAction::make(), 
+                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\RestoreAction::make(),
                 Tables\Actions\ReplicateAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make(), 
+                    Tables\Actions\ForceDeleteBulkAction::make(),
                     Tables\Actions\RestoreBulkAction::make(),
                 ]),
             ]);

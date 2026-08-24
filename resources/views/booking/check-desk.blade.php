@@ -44,7 +44,6 @@ document.getElementById("checkDeskForm").addEventListener("submit", function(eve
         let availableHoursDiv = document.getElementById("availableHours");
 
         if (data.success) {
-            console.log(data);
             if (data.availableHours.length == 0) {
                 resultDiv.innerHTML = `<div class="alert alert-danger">La scrivania <strong>${data.desk.identifier}</strong> è <strong>OCCUPATA</strong> per la data selezionata.</div>`;
                 availableHoursDiv.innerHTML = ""; // Svuotiamo gli orari disponibili

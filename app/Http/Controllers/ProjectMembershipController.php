@@ -2,313 +2,104 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreProjectRequest;
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ProjectMembershipController extends Controller
 {
-    /**
-     * Mostra i progetti dell'utente e quelli disponibili
-     */
     public function index()
     {
         $user = Auth::user();
-        
-        // Progetti a cui l'utente è già assegnato
+
         $myProjects = $user->projects()
             ->withCount('users')
             ->withPivot('role', 'created_at')
             ->get();
-        
-        // Progetti disponibili (attivi e non ancora parte)
+
         $availableProjects = Project::where('active', true)
             ->whereNotIn('id', $myProjects->pluck('id'))
             ->withCount('users')
             ->get();
-        
+
         return view('projects.index', compact('myProjects', 'availableProjects'));
     }
 
-    /**
-     * Unisciti a un progetto (metodo semplice con GET)
-     */
-    public function joinSimple(Project $project, $role)
-    {
-        $user = Auth::user();
-        
-        // Verifica che il progetto sia attivo
-        if (!$project->active) {
-            return redirect()->route('projects.index')->with('error', 'Questo progetto non è più attivo.');
-        }
-        
-        // Verifica che l'utente non sia già nel progetto
-        if ($user->projects()->where('project_id', $project->id)->exists()) {
-            return redirect()->route('projects.index')->with('error', 'Sei già parte di questo progetto.');
-        }
-        
-        // Validazione ruolo
-        $validRoles = ['member', 'developer', 'designer', 'tester', 'manager'];
-        if (!in_array($role, $validRoles)) {
-            return redirect()->route('projects.index')->with('error', 'Ruolo non valido.');
-        }
-        
-        try {
-            // Unisciti al progetto
-            $user->projects()->attach($project->id, [
-                'role' => $role,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-            
-            return redirect()->route('projects.index')->with('success', "Ti sei unito al progetto '{$project->name}' come {$role}!");
-        } catch (\Exception $e) {
-            \Log::error('Failed to join project', [
-                'user_id' => $user->id,
-                'project_id' => $project->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return redirect()->route('projects.index')->with('error', 'Errore durante l\'iscrizione al progetto. Riprova.');
-        }
-    }
-
-    /**
-     * Unisciti a un progetto
-     */
-    public function join(Request $request, Project $project)
-    {
-        $user = Auth::user();
-        
-        // Verifica che il progetto sia attivo
-        if (!$project->active) {
-            return back()->with('error', 'Questo progetto non è più attivo.');
-        }
-        
-        // Verifica che l'utente non sia già nel progetto
-        if ($user->projects()->where('project_id', $project->id)->exists()) {
-            return back()->with('error', 'Sei già parte di questo progetto.');
-        }
-        
-        // Validazione ruolo (se fornito)
-        $validated = $request->validate([
-            'role' => 'nullable|string|max:255',
-        ]);
-        
-        // Unisciti al progetto con ruolo di default 'member'
-        try {
-            $user->projects()->attach($project->id, [
-                'role' => $validated['role'] ?? 'member',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-            
-            return back()->with('success', "Ti sei unito al progetto '{$project->name}' con successo!");
-        } catch (\Exception $e) {
-            \Log::error('Failed to join project', [
-                'user_id' => $user->id,
-                'project_id' => $project->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return back()->with('error', 'Errore durante l\'iscrizione al progetto. Riprova.');
-        }
-    }
-
-    /**
-     * Abbandona un progetto (metodo semplice con GET)
-     */
-    public function leaveSimple(Project $project)
-    {
-        $user = Auth::user();
-        
-        // Verifica che l'utente sia effettivamente nel progetto
-        if (!$user->projects()->where('project_id', $project->id)->exists()) {
-            return redirect()->route('projects.index')->with('error', 'Non fai parte di questo progetto.');
-        }
-        
-        try {
-            // Rimuovi l'utente dal progetto
-            $user->projects()->detach($project->id);
-            
-            return redirect()->route('projects.index')->with('success', "Hai lasciato il progetto '{$project->name}' con successo!");
-        } catch (\Exception $e) {
-            \Log::error('Failed to leave project', [
-                'user_id' => $user->id,
-                'project_id' => $project->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return redirect()->route('projects.index')->with('error', 'Errore durante l\'abbandono del progetto. Riprova.');
-        }
-    }
-
-    /**
-     * Lascia un progetto
-     */
     public function leave(Project $project)
     {
-        $user = Auth::user();
-            
-        // Verifica che l'utente sia nel progetto
-        if (!$user->projects()->where('project_id', $project->id)->exists()) {
-            return back()->with('error', 'Non fai parte di questo progetto.');
-        }
-        
-        // Lascia il progetto
-        $user->projects()->detach($project->id);
-        
+        $this->authorize('leave', $project);
+
+        Auth::user()->projects()->detach($project->id);
+
         return back()->with('success', "Hai lasciato il progetto '{$project->name}'.");
-    }
-
-    /**
-     * Aggiorna il ruolo dell'utente in un progetto
-     */
-    public function updateRole(Request $request, Project $project)
-    {
-        $user = Auth::user();
-        
-        $validated = $request->validate([
-            'role' => 'required|string|max:255',
-        ]);
-        
-        // Verifica che l'utente sia nel progetto
-        if (!$user->projects()->where('project_id', $project->id)->exists()) {
-            return back()->with('error', 'Non fai parte di questo progetto.');
-        }
-        
-        // Aggiorna il ruolo
-        $user->projects()->updateExistingPivot($project->id, [
-            'role' => $validated['role'],
-            'updated_at' => now(),
-        ]);
-        
-        return back()->with('success', 'Ruolo aggiornato con successo!');
-    }
-
-    /**
-     * Mostra i dettagli di un progetto e i suoi membri
-     */
-    public function show(Project $project)
-    {
-        $project->load(['users' => function($query) {
-            $query->withPivot('role', 'created_at');
-        }]);
-        
-        $user = Auth::user();
-        $isMember = $user->projects()->where('project_id', $project->id)->exists();
-        
-        return view('projects.show', compact('project', 'isMember'));
     }
 
     public function updateResources(Request $request, Project $project)
     {
-        // Verifica che l'utente sia nel progetto
-        if (!auth()->user()->projects()->where('project_id', $project->id)->exists()) {
-            return back()->with('error', 'Non fai parte di questo progetto.');
-        }
-        
+        $this->authorize('updateResources', $project);
+
         $validated = $request->validate([
             'slack_channel' => 'nullable|string|max:255',
             'drive_folder' => 'nullable|url',
             'documentation_url' => 'nullable|url',
             'resources_notes' => 'nullable|string',
         ]);
-        
+
         $project->update($validated);
-        
+
         return back()->with('success', 'Risorse progetto aggiornate!');
     }
 
-    public function updateMemberRole(Request $request, Project $project, \App\Models\User $member)
+    public function updateMemberRole(Request $request, Project $project, User $member)
     {
-        $user = Auth::user();
-
-        // Autorizzazione: superuser oppure PM del progetto
-        $authorized = $user->superuser ||
-            ($user->is_project_manager &&
-             $user->projects()->wherePivot('role', 'manager')->where('projects.id', $project->id)->exists());
-
-        if (!$authorized) {
-            abort(403, 'Non hai i permessi per modificare i ruoli in questo progetto.');
-        }
+        $this->authorize('manageMembers', $project);
 
         $validated = $request->validate([
             'role' => 'required|string|in:developer,designer,tester,product owner,scrum master,manager,member',
         ]);
 
-        // Verifica che il membro sia effettivamente nel progetto
-        if (!$member->projects()->where('project_id', $project->id)->exists()) {
+        if (! $member->projects()->where('project_id', $project->id)->exists()) {
             return back()->with('error', 'L utente non è membro di questo progetto.');
         }
 
         $member->projects()->updateExistingPivot($project->id, [
-            'role'       => $validated['role'],
+            'role' => $validated['role'],
             'updated_at' => now(),
         ]);
+
         $val = $validated['role'] === 'member' ? '' : "di {$validated['role']}";
 
         return back()->with('success', "Ruolo di {$member->name} aggiornato a {$val}.");
     }
 
-    private function canManageProjects(): bool
+    public function show(Project $project)
     {
-        $user = Auth::user();
-        return $user->superuser || $user->is_project_manager;
-    }
+        $this->authorize('view', $project);
 
-    private function canManageThisProject(Project $project): bool
-    {
-        $user = Auth::user();
+        $project->load(['users' => function ($query) {
+            $query->withPivot('role', 'created_at');
+        }]);
 
-        if ($user->superuser) {
-            return true;
-        }
+        $isMember = Auth::user()->projects()->where('project_id', $project->id)->exists();
 
-        if ($user->is_project_manager) {
-            return $user->projects()
-                ->wherePivot('role', 'manager')
-                ->where('projects.id', $project->id)
-                ->exists();
-        }
-
-        return false;
+        return view('projects.show', compact('project', 'isMember'));
     }
 
     public function create()
     {
-        if (!$this->canManageProjects()) {
-            abort(403, 'Non hai i permessi per creare progetti.');
-        }
+        $this->authorize('create', Project::class);
 
         return view('projects.create');
     }
 
-    public function store(Request $request)
+    public function store(StoreProjectRequest $request)
     {
-        if (!$this->canManageProjects()) {
-            abort(403, 'Non hai i permessi per creare progetti.');
-        }
+        $project = Project::create($request->validated());
 
-        $validated = $request->validate([
-            'name'               => 'required|string|max:255',
-            'description'        => 'nullable|string',
-            'start_date'         => 'nullable|date',
-            'end_date'           => 'nullable|date|after_or_equal:start_date',
-            'active'             => 'boolean',
-            'slack_channel'      => 'nullable|url|max:500',
-            'drive_folder'       => 'nullable|url|max:500',
-            'documentation_url'  => 'nullable|url|max:500',
-            'resources_notes'    => 'nullable|string',
-        ]);
-
-        $validated['active'] = $request->boolean('active', true);
-
-        $project = Project::create($validated);
-
-        $user = Auth::user();
-        $user->projects()->attach($project->id, [
-            'role'       => 'manager',
+        $request->user()->projects()->attach($project->id, [
+            'role' => 'manager',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -319,37 +110,16 @@ class ProjectMembershipController extends Controller
 
     public function edit(Project $project)
     {
-        if (!$this->canManageThisProject($project)) {
-            abort(403, 'Non hai i permessi per modificare questo progetto.');
-        }
+        $this->authorize('update', $project);
 
         return view('projects.edit', compact('project'));
     }
 
-    public function update(Request $request, Project $project)
+    public function update(StoreProjectRequest $request, Project $project)
     {
-        if (!$this->canManageThisProject($project)) {
-            abort(403, 'Non hai i permessi per modificare questo progetto.');
-        }
-
-        $validated = $request->validate([
-            'name'               => 'required|string|max:255',
-            'description'        => 'nullable|string',
-            'start_date'         => 'nullable|date',
-            'end_date'           => 'nullable|date|after_or_equal:start_date',
-            'active'             => 'boolean',
-            'slack_channel'      => 'nullable|url|max:500',
-            'drive_folder'       => 'nullable|url|max:500',
-            'documentation_url'  => 'nullable|url|max:500',
-            'resources_notes'    => 'nullable|string',
-        ]);
-
-        $validated['active'] = $request->boolean('active', true);
-
-        $project->update($validated);
+        $project->update($request->validated());
 
         return redirect()->route('projects.show', $project->id)
             ->with('success', "Progetto \"{$project->name}\" aggiornato con successo!");
     }
-
 }

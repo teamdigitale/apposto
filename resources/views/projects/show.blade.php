@@ -19,17 +19,12 @@
                 </div>
                 
                 <div class="text-end">
-                    @php
-                        $canEditProject = auth()->user()->superuser ||
-                            (auth()->user()->is_project_manager &&
-                             auth()->user()->projects()->wherePivot('role','manager')->where('projects.id',$project->id)->exists());
-                    @endphp
-                    @if($canEditProject)
+                    @can('update', $project)
                         <a href="{{ route('projects.edit', $project->id) }}" class="btn btn-sm btn-outline-primary mb-2">
                             <i class="bi bi-pencil-square"></i> Modifica Progetto
                         </a>
                         <br>
-                    @endif
+                    @endcan
                     @if($isMember)
                         <span class="badge bg-success"><i class="bi bi-check-circle"></i> Fai parte del team</span>
                     @else
@@ -131,12 +126,7 @@
                                             </td>
                                             <td>{{ $user->email }}</td>
                                             <td>
-                                                @php
-                                                    $canEditRoles = Auth::user()->superuser ||
-                                                        (Auth::user()->is_project_manager &&
-                                                         Auth::user()->projects()->wherePivot('role','manager')->where('projects.id',$project->id)->exists());
-                                                @endphp
-                                                @if($canEditRoles)
+                                                @can('manageMembers', $project)
                                                     {{-- Form inline per modificare il ruolo di ogni membro --}}
                                                     <form method="POST"
                                                           action="{{ route('projects.update-member-role', [$project->id, $user->id]) }}"
@@ -159,7 +149,7 @@
                                                         <i class="bi bi-person-badge"></i>
                                                         {{ ucfirst($user->pivot->role) }}
                                                     </span>
-                                                @endif
+                                                @endcan
                                             </td>
                                             <td>{{ $user->pivot->created_at->format('d/m/Y') }}</td>
                                         </tr>
@@ -249,6 +239,7 @@
             @endif
             
             <!-- Form di modifica (collapsabile) -->
+            @can('updateResources', $project)
             <div class="collapse mt-3" id="resourcesForm">
                 <hr>
                 <form method="POST" action="{{ route('projects.updateResources', $project->id) }}">
@@ -304,6 +295,7 @@
                     </div>
                 </form>
             </div>
+            @endcan
         </div>
     </div>
 
@@ -324,7 +316,7 @@
                         <i class="bi bi-calendar-check"></i> Gestisci Presenze
                     </a>
                 @else
-                    <form method="POST" action="{{ route('projects.join', $project->id) }}" class="d-inline">
+                    <form method="POST" action="{{ route('projects.requestJoin', $project->id) }}" class="d-inline">
                         @csrf
                         <input type="hidden" name="role" value="member">
                         <button type="submit" class="btn btn-success">

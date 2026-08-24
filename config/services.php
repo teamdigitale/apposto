@@ -14,11 +14,11 @@ return [
     |
     */
 
-    'mailgun' => [ 
-         'domain' => env('MAILGUN_DOMAIN'), 
-         'secret' => env('MAILGUN_SECRET'), 
-         'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'), 
-         'scheme' => 'https',
+    'mailgun' => [
+        'domain' => env('MAILGUN_DOMAIN'),
+        'secret' => env('MAILGUN_SECRET'),
+        'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
+        'scheme' => 'https',
     ],
 
     'postmark' => [
@@ -33,6 +33,15 @@ return [
 
     'resend' => [
         'key' => env('RESEND_KEY'),
+    ],
+
+    'recaptcha' => [
+        'site_key' => env('RECAPTCHA_SITE_KEY'),
+        'secret_key' => env('RECAPTCHA_SECRET_KEY'),
+    ],
+
+    'assistenza' => [
+        'email' => env('MAIL_ASSISTENZA'),
     ],
 
     'slack' => [
