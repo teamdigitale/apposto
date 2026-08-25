@@ -80,6 +80,8 @@
                   };
                   WorkingDir = appRoot;
                 };
+
+                tag = self.rev or self.dirtyRev;
               };
           };
 

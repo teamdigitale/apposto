@@ -35,34 +35,33 @@ jobs:
       - uses: nicknovitski/nix-develop@9be7cfb4b10451d3390a75dc18ad0465bed4932a # v1
         with:
           arguments: --impure
+      - name: Extract image metadata
+        id: metadata
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: ghcr.io/teamdigitale/apposto
+          tags: |
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref_name, 'v0.') }}
       - name: Build
-        id: build
-        env:
-          GITHUB_SHA: ${{ github.sha }}
-        run: |
-          nix build .#containerImage
-          echo "IMAGE_TAG=$(basename "$(readlink result)" | cut -d- -f1)" >> "$GITHUB_OUTPUT"
-      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+        run: nix build .#containerImage
       - name: Push image to GHCR
-        id: push-image
         run: |
           nix run .#containerImage.copyToRegistry -- \
             --dest-username ${{ github.actor }} \
-            --dest-password ${{ github.token }} \
-            --digestfile "$RUNNER_TEMP/digest.txt"
-          echo "digest=$(<"$RUNNER_TEMP/digest.txt")" >> "$GITHUB_OUTPUT"
-      - name: Tag
-        id: tag
+            --dest-password ${{ github.token }}
+      - name: Tag image on GHCR
+        if: steps.metadata.outputs.tag-names != ''
+        env:
+          IMAGE_TAGS: ${{ steps.metadata.outputs.tag-names }}
         run: |
-          VERSION=${BRANCH_NAME##*/}
-          [[ "${BRANCH_NAME:0:10}" == "refs/tags/" ]] && VERSION=${VERSION:1}
-          IMAGE_ID=$IMAGE_NAME:$VERSION
-          echo "IMAGE_ID=$IMAGE_ID" >> "$GITHUB_OUTPUT"
-          echo "${{ github.token }}" | oras tag "$IMAGE_NAME:${{ steps.build.outputs.IMAGE_TAG }}" "$IMAGE_ID" \
+          mapfile -t aliases <<< "$IMAGE_TAGS"
+
+          echo "${{ github.token }}" | oras tag "$IMAGE_NAME:$GITHUB_SHA" "${aliases[@]}" \
             --username "${{ github.actor }}" \
             --password-stdin
-        env:
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
     env:
       IMAGE_NAME: ghcr.io/teamdigitale/apposto
   helmChart:
