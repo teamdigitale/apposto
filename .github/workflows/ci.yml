@@ -40,9 +40,10 @@ jobs:
           echo "IMAGE_TAG=$(basename "$(readlink result)" | cut -d- -f1)" >> "$GITHUB_OUTPUT"
       - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Copy to Podman
-        run: nix run .#containerImage.copyToRegistry -- \
-          --dest-username ${{ github.actor }} \
-          --dest-password ${{ github.token }}
+        run: |
+          nix run .#containerImage.copyToRegistry -- \
+            --dest-username ${{ github.actor }} \
+            --dest-password ${{ github.token }}
       - name: Tag
         id: tag
         run: |
