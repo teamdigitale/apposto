@@ -48,7 +48,7 @@
 
             containerImage = let appRoot = "/share/php/apposto"; in
               nix2containerPkgs.nix2container.buildImage {
-                name = "apposto";
+                name = "ghcr.io/teamdigitale/apposto";
 
                 copyToRoot = pkgs.buildEnv {
                   name = "image-root";
@@ -99,6 +99,7 @@
                     pkgs.kubectl
                     pkgs.kubelogin
                     pkgs.kubernetes-helm
+                    pkgs.oras
                   ];
                   processes.serve.exec = "./artisan serve";
                 })
