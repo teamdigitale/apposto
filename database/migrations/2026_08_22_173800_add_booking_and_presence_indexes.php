@@ -10,9 +10,9 @@ return new class extends Migration
     public function up(): void
     {
         $duplicates = DB::table('presences')
-            ->select('user_id', 'date', DB::raw('MAX(id) as keep_id'), DB::raw('COUNT(*) as total'))
+            ->select('user_id', 'date', DB::raw('MAX(id) as keep_id'))
             ->groupBy('user_id', 'date')
-            ->having('total', '>', 1)
+            ->havingRaw('COUNT(*) > 1')
             ->get();
 
         foreach ($duplicates as $row) {
