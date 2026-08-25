@@ -43,25 +43,28 @@ jobs:
           nix build .#containerImage
           echo "IMAGE_TAG=$(basename "$(readlink result)" | cut -d- -f1)" >> "$GITHUB_OUTPUT"
       - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-      - name: Copy to Podman
+      - name: Push image to GHCR
+        id: push-image
         run: |
           nix run .#containerImage.copyToRegistry -- \
             --dest-username ${{ github.actor }} \
-            --dest-password ${{ github.token }}
+            --dest-password ${{ github.token }} \
+            --digestfile "$RUNNER_TEMP/digest.txt"
+          echo "digest=$(<"$RUNNER_TEMP/digest.txt")" >> "$GITHUB_OUTPUT"
       - name: Tag
         id: tag
         run: |
-          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
-          IMAGE_ID=${IMAGE_ID,,}
           VERSION=${BRANCH_NAME##*/}
           [[ "${BRANCH_NAME:0:10}" == "refs/tags/" ]] && VERSION=${VERSION:1}
-          IMAGE_ID=$IMAGE_ID:$VERSION
+          IMAGE_ID=$IMAGE_NAME:$VERSION
           echo "IMAGE_ID=$IMAGE_ID" >> "$GITHUB_OUTPUT"
-          echo "${{ github.token }}" | oras tag "$IMAGE_ID:${{ steps.build.outputs.IMAGE_TAG }}" "$IMAGE_ID" \
+          echo "${{ github.token }}" | oras tag "$IMAGE_NAME:${{ steps.build.outputs.IMAGE_TAG }}" "$IMAGE_ID" \
             --username "${{ github.actor }}" \
             --password-stdin
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+    env:
+      IMAGE_NAME: ghcr.io/teamdigitale/apposto
   helmChart:
     name: Build Helm chart
     runs-on: ubuntu-24.04
