@@ -12,6 +12,9 @@
                             <i class="bi bi-calendar3"></i> Mese
                         </th>
                         <th class="fw-semibold pb-1 text-nowrap">
+                            <i class="bi bi-people"></i> Team
+                        </th>
+                        <th class="fw-semibold pb-1 text-nowrap">
                             <i class="bi bi-briefcase"></i> Progetto
                         </th>
                         <th></th>
@@ -22,6 +25,18 @@
                         <td class="pe-5">
                             <input type="month" name="month" id="month" value="{{ $month }}"
                                    class="form-control" style="min-width: 180px;">
+                        </td>
+                        <td class="pe-4">
+                            <select name="team_filter" id="team_filter"
+                                    class="form-select" style="min-width: 180px;">
+                                <option value="">Tutti i team</option>
+                                @foreach($allTeams as $team)
+                                    <option value="{{ $team->id }}"
+                                            {{ $validTeamFilter == $team->id ? 'selected' : '' }}>
+                                        {{ $team->label }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </td>
                         <td class="pe-4">
                             <select name="project_filter" id="project_filter"
@@ -39,7 +54,7 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-funnel"></i> Applica
                             </button>
-                            @if($validFilter)
+                            @if($validFilter || $validTeamFilter !== $defaultTeamId)
                                 <a href="{{ route('presences.overview', ['month' => $month]) }}"
                                    class="btn btn-outline-secondary ms-2">
                                     <i class="bi bi-x-circle"></i> Rimuovi

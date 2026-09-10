@@ -56,7 +56,38 @@ test('a project manager can access the presence overview', function () {
     $this->actingAs($pm)
         ->get(route('presences.overview'))
         ->assertOk()
-        ->assertSee('Collega Altro Team');
+        ->assertSee('Collega Altro Team')
+        ->assertSee('Team');
+});
+
+test('the presence overview defaults to the SSI team', function () {
+    $ssi = \App\Models\Team::factory()->create(['label' => 'SSI']);
+    $other = \App\Models\Team::factory()->create(['label' => 'Altro']);
+    $pm = User::factory()->create([
+        'is_project_manager' => true,
+        'team_id' => $ssi->id,
+        'name' => 'PM SSI',
+    ]);
+    User::factory()->create(['team_id' => $ssi->id, 'name' => 'Utente SSI']);
+    User::factory()->create(['team_id' => $other->id, 'name' => 'Utente Altro']);
+
+    $this->actingAs($pm)
+        ->get(route('presences.overview'))
+        ->assertOk()
+        ->assertSee('Utente SSI')
+        ->assertDontSee('Utente Altro');
+
+    $this->actingAs($pm)
+        ->get(route('presences.overview', ['team_filter' => '']))
+        ->assertOk()
+        ->assertSee('Utente SSI')
+        ->assertSee('Utente Altro');
+
+    $this->actingAs($pm)
+        ->get(route('presences.overview', ['team_filter' => $other->id]))
+        ->assertOk()
+        ->assertSee('Utente Altro')
+        ->assertDontSee('Utente SSI');
 });
 
 test('a regular user cannot access the presence overview', function () {

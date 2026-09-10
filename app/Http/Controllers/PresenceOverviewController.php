@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Presence;
+use App\Models\Team;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class PresenceOverviewController extends Controller
@@ -32,6 +34,8 @@ class PresenceOverviewController extends Controller
         $projectFilter = $request->input('project_filter');
 
         $allProjects = $user->visibleProjects()->orderBy('name')->get();
+        $allTeams = Team::query()->orderBy('label')->get();
+        $defaultTeamId = $this->defaultTeamId($allTeams);
 
         $validFilter = null;
         if ($projectFilter) {
@@ -40,7 +44,20 @@ class PresenceOverviewController extends Controller
                 : null;
         }
 
+        if ($request->exists('team_filter')) {
+            $rawTeam = $request->input('team_filter');
+            $validTeamFilter = ($rawTeam === '' || $rawTeam === null)
+                ? null
+                : $allTeams->firstWhere('id', (int) $rawTeam)?->id;
+        } else {
+            $validTeamFilter = $defaultTeamId;
+        }
+
         $usersQuery = User::query()->orderBy('name');
+
+        if ($validTeamFilter) {
+            $usersQuery->where('team_id', $validTeamFilter);
+        }
 
         if ($validFilter) {
             $usersQuery->whereHas('projects', fn ($q) => $q->where('projects.id', $validFilter));
@@ -67,7 +84,21 @@ class PresenceOverviewController extends Controller
 
         return view('presences.overview', compact(
             'overview', 'days', 'month',
-            'allProjects', 'validFilter'
+            'allProjects', 'validFilter',
+            'allTeams', 'validTeamFilter', 'defaultTeamId'
         ));
+    }
+
+    private function defaultTeamId(Collection $teams): ?int
+    {
+        $match = $teams->first(function (Team $team) {
+            $label = trim((string) $team->label);
+
+            return strcasecmp($label, 'SSI') === 0
+                || strcasecmp($label, 'team SSI') === 0
+                || (bool) preg_match('/\bssi\b/i', $label);
+        });
+
+        return $match?->id;
     }
 }
