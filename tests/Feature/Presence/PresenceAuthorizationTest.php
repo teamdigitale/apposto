@@ -61,7 +61,7 @@ test('a project manager can access the presence overview', function () {
 });
 
 test('the presence overview defaults to the SSI team', function () {
-    $ssi = \App\Models\Team::factory()->create(['label' => 'SSI']);
+    $ssi = \App\Models\Team::factory()->create(['label' => 'SSII - esperti']);
     $other = \App\Models\Team::factory()->create(['label' => 'Altro']);
     $pm = User::factory()->create([
         'is_project_manager' => true,

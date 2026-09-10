@@ -91,14 +91,18 @@ class PresenceOverviewController extends Controller
 
     private function defaultTeamId(Collection $teams): ?int
     {
-        $match = $teams->first(function (Team $team) {
-            $label = trim((string) $team->label);
+        $byLabel = $teams->mapWithKeys(fn (Team $team) => [
+            $team->id => trim((string) $team->label),
+        ]);
 
-            return strcasecmp($label, 'SSI') === 0
-                || strcasecmp($label, 'team SSI') === 0
-                || (bool) preg_match('/\bssi\b/i', $label);
-        });
+        $ssii = $byLabel->search(fn (string $label) => (bool) preg_match('/^ssii\b/i', $label));
+        if ($ssii !== false) {
+            return (int) $ssii;
+        }
 
-        return $match?->id;
+        $ssi = $byLabel->search(fn (string $label) => (bool) preg_match('/^ssi\b/i', $label)
+            || strcasecmp($label, 'team SSI') === 0);
+
+        return $ssi === false ? null : (int) $ssi;
     }
 }
