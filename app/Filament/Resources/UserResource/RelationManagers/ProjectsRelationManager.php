@@ -42,9 +42,6 @@ class ProjectsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('name')
-            // Fondamentale: senza questo la pivot non viene caricata
-            // e il ruolo risulta sempre null/member
-            ->modifyQueryUsing(fn ($query) => $query->withPivot('role', 'created_at', 'updated_at'))
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Progetto')
@@ -53,16 +50,17 @@ class ProjectsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('pivot.role')
                     ->label('Ruolo')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'manager'       => 'danger',
-                        'scrum master'  => 'warning',
+                    ->placeholder('—')
+                    ->color(fn (?string $state): string => match ($state) {
+                        'manager' => 'danger',
+                        'scrum master' => 'warning',
                         'product owner' => 'info',
-                        'developer'     => 'success',
-                        'designer'      => 'primary',
-                        'tester'        => 'gray',
-                        default         => 'gray',
+                        'developer' => 'success',
+                        'designer' => 'primary',
+                        'tester' => 'gray',
+                        default => 'gray',
                     })
-                    ->formatStateUsing(fn (string $state): string => ucfirst($state)),
+                    ->formatStateUsing(fn (?string $state): string => $state ? ucfirst($state) : '—'),
                 Tables\Columns\IconColumn::make('active')
                     ->label('Attivo')
                     ->boolean(),
