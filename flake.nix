@@ -5,7 +5,7 @@
       url = "github:nlewo/nix2container";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable-small";
     devenv = {
       url = "github:cachix/devenv";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -32,7 +32,7 @@
         in
         {
           packages = {
-            default = pkgs.php83.buildComposerProject (finalAttrs: {
+            default = pkgs.php84.buildComposerProject (finalAttrs: {
               pname = "apposto";
               version = "1.0.0";
               src = appSrc;
@@ -43,7 +43,7 @@
                 php artisan storage:link
               '';
 
-              nativeBuildInputs = [ pkgs.php83 ];
+              nativeBuildInputs = [ pkgs.php84 ];
             });
 
             containerImage = let appRoot = "/share/php/apposto"; in
@@ -92,11 +92,11 @@
                 ({ config, ... }: {
                   languages.php = {
                     enable = true;
-                    version = "8.3";
+                    version = "8.4";
                   };
                   packages = [
                     pkgs.actionlint
-                    pkgs.azure-cli
+                    # pkgs.azure-cli
                     pkgs.helm-docs
                     pkgs.kubectl
                     pkgs.kubelogin
