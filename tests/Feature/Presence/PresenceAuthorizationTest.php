@@ -36,6 +36,24 @@ test('a user can delete their own future presence with DELETE', function () {
     expect(Presence::where('user_id', $user->id)->where('date', $date)->exists())->toBeFalse();
 });
 
+test('a user can delete their own future presence via JSON without leaving the calendar', function () {
+    $user = User::factory()->create();
+    $date = now()->addDay()->toDateString();
+
+    Presence::factory()->create([
+        'user_id' => $user->id,
+        'date' => $date,
+        'status' => 'presente',
+    ]);
+
+    $this->actingAs($user)
+        ->deleteJson(route('presences.destroy', $date))
+        ->assertOk()
+        ->assertJsonPath('date', $date);
+
+    expect(Presence::where('user_id', $user->id)->where('date', $date)->exists())->toBeFalse();
+});
+
 test('a regular user cannot export absences of projects they do not belong to', function () {
     $outsider = User::factory()->create();
     Project::factory()->create();

@@ -271,18 +271,25 @@ class PresenceController extends Controller
         return response()->json(['message' => 'Presenze salvate con successo!', 'dates' => $dates, 'count' => count($dates)]);
     }
 
-    public function destroy(string $date)
+    public function destroy(Request $request, string $date)
     {
+        $error = function (string $message, int $status = 422) use ($request) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], $status);
+            }
+
+            return redirect()->route('presences.index')->with('error', $message);
+        };
+
         if (Carbon::parse($date)->startOfDay()->lt(Carbon::today())) {
-            return redirect()->route('presences.index')
-                ->with('error', 'Non è possibile eliminare presenze di giorni precedenti ad oggi.');
+            return $error('Non è possibile eliminare presenze di giorni precedenti ad oggi.');
         }
 
         $user = auth()->user();
         $presence = Presence::where('user_id', $user->id)->where('date', $date)->first();
 
         if (! $presence) {
-            return redirect()->route('presences.index')->with('error', 'Presenza non trovata.');
+            return $error('Presenza non trovata.', 404);
         }
 
         $this->authorize('delete', $presence);
@@ -292,8 +299,13 @@ class PresenceController extends Controller
             ->where('start_date', $date)
             ->update(['status' => BookingStatus::Cancelled->value]);
 
-        return redirect()->route('presences.index')
-            ->with('success', 'Presenza del '.Carbon::parse($date)->format('d/m/Y').' eliminata!');
+        $message = 'Presenza del '.Carbon::parse($date)->format('d/m/Y').' eliminata!';
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message, 'date' => $date]);
+        }
+
+        return redirect()->route('presences.index')->with('success', $message);
     }
 
     private function ownEvent(Presence $presence): array
@@ -332,6 +344,7 @@ class PresenceController extends Controller
         return [
             'title' => $title,
             'start' => $presence->date,
+            'allDay' => true,
             'status' => $presence->status,
             'backgroundColor' => $bgColor,
             'borderColor' => $borderColor,
