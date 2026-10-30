@@ -97,6 +97,7 @@
                 <div class="card mb-3">
                     <div class="card-body py-2">
                         <form method="GET" action="{{ route('presences.index') }}" class="row g-2 align-items-center">
+                            <input type="hidden" name="month" id="calendar-month" value="{{ request('month') }}">
                             <div class="col-md-4">
                                 <label class="form-label mb-1 small">
                                     <i class="bi bi-briefcase"></i> Filtra per progetto
@@ -115,7 +116,7 @@
                                 <span class="badge bg-info">
                                     <i class="bi bi-funnel-fill"></i> Filtro attivo
                                 </span>
-                                <a href="{{ route('presences.index') }}" class="btn btn-sm btn-outline-secondary ms-2">
+                                <a href="{{ route('presences.index', array_filter(['month' => request('month')])) }}" class="btn btn-sm btn-outline-secondary ms-2">
                                     <i class="bi bi-x-circle"></i> Rimuovi
                                 </a>
                             </div>
@@ -311,13 +312,35 @@ document.addEventListener('DOMContentLoaded', function () {
     const saveBtn = document.getElementById('save-btn');
 
     const calendarEl = document.getElementById('calendar');
+    const monthParam = new URLSearchParams(window.location.search).get('month');
+    const calendarInitialDate = (/^\d{4}-\d{2}$/.test(monthParam || ''))
+        ? `${monthParam}-01`
+        : undefined;
+
+    function persistVisibleMonth(date) {
+        const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const monthInput = document.getElementById('calendar-month');
+        if (monthInput) {
+            monthInput.value = value;
+        }
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('month') !== value) {
+            url.searchParams.set('month', value);
+            history.replaceState({}, '', url);
+        }
+    }
+
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
+        ...(calendarInitialDate ? { initialDate: calendarInitialDate } : {}),
         locale: 'it',
         weekends: false,           // ✅ NASCONDI SABATO E DOMENICA
         selectable: true,          // ✅ ABILITA SELEZIONE
         selectMirror: true,        // ✅ Mostra preview durante il drag
         unselectAuto: false,       // ✅ Non deseleziona automaticamente
+        datesSet: function(info) {
+            persistVisibleMonth(info.view.currentStart);
+        },
 
         // Render personalizzato degli eventi: icona identificativa per i propri
         eventContent: function(arg) {
@@ -356,13 +379,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Eventi salvati + festività + colleghi
         events: [
-            ...savedPresences.map(p => ({
-                title: getShortTitle(p.status),
-                start: p.start,
-                backgroundColor: getColorByStatus(p.status),
-                borderColor: getColorByStatus(p.status),
-                allDay: true
-            })),
+            ...savedPresences,
             ...holidayEvents,
             ...colleagueEvents
         ],
@@ -657,30 +674,34 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.dates && data.dates.length > 0) {
                 showAlert(`✅ ${data.count} giorni salvati con successo!`, 'success');
                 
-                // Aggiorna calendario
+                // Aggiorna calendario senza ricaricare (resta sul mese visibile)
+                const workplaceSelect = document.getElementById('workplace_id');
+                const workplaceName = (status === 'presente' && workplaceSelect?.value)
+                    ? workplaceSelect.selectedOptions[0]?.text
+                    : null;
+
                 data.dates.forEach(date => {
-                    // Rimuovi evento esistente
                     calendar.getEvents().forEach(event => {
-                        if (event.startStr === date) {
+                        if (event.startStr === date
+                            && event.display !== 'background'
+                            && event.extendedProps?.type !== 'colleague_group') {
                             event.remove();
                         }
                     });
-                    
-                    // Aggiungi nuovo evento
+
                     calendar.addEvent({
                         title: getShortTitle(status),
                         start: date,
                         backgroundColor: getColorByStatus(status),
                         borderColor: getColorByStatus(status),
-                        allDay: true
+                        allDay: true,
+                        extendedProps: { type: 'own', status, workplaceName }
                     });
                 });
-                
-                // Reset form
+
+                saveBtn.innerHTML = '<i class="bi bi-save"></i> Salva Periodo';
                 clearSelection();
-                
-                // Ricarica pagina per aggiornare contatori ferie
-                setTimeout(() => location.reload(), 1500);
+                loadCharts();
             } else if (data.message) {
                 showAlert(data.message, 'info');
                 saveBtn.disabled = false;
@@ -793,9 +814,26 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     function deletePresence(date, eventObj) {
-        const form = document.getElementById('delete-presence-form');
-        form.action = `/presences/${date}`;
-        form.submit();
+        fetch(`/presences/${date}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(async (response) => {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.message || 'Errore durante l\'eliminazione');
+            }
+            eventObj?.remove();
+            showAlert(data.message || 'Presenza eliminata!', 'success');
+            loadCharts();
+        })
+        .catch(error => {
+            showAlert('❌ ' + error.message, 'danger');
+        });
     }
 
     // ==========================================
